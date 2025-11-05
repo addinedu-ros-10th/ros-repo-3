@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<sdf version="1.10">
+  <model name="shelf_6">
+    <static>true</static>
+    <link name="link">
+      <visual name="visual">
+        <geometry>
+          <mesh>
+            <uri>./models/shelf.dae</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.55 0.27 0.20 1</ambient>
+          <diffuse>0.55 0.27 0.20 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <emissive>0 0 0 1</emissive>
+        </material>
+      </visual>
+      <collision name="collision">
+        <geometry>
+          <mesh>
+            <uri>./models/shelf.dae</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+    <pose>0 0 0 0 0 0</pose>
+  </model>
+</sdf>
