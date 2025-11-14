@@ -12,6 +12,7 @@ from pages.shopping_list import AutoShoppingClass
 from pages.pc_browser import PC_BrowserClass
 # from pages.login_admin import LoginAdminWindow
 from pages.login_tcp_req import LoginTcpWindow
+# from pages.pro_update import ProUpdateClass
 
 
 def main():
@@ -29,6 +30,7 @@ def main():
     manager.add_page("PC_BrowserClass", PC_BrowserClass(manager))
     # manager.add_page("LoginAdminWindow", LoginAdminWindow(manager))
     manager.add_page("LoginTcpWindow", LoginTcpWindow(manager))
+    # manager.add_page("ProUpdateClass", ProUpdateClass(manager))
 
 
 
