@@ -23,7 +23,7 @@ class AdminDetailClass(QMainWindow):
 
         self.manager = manager
 
-        self.setWindowTitle("구매희망 리스트 선택 화면")
+        self.setWindowTitle("")
         self.setGeometry(100, 100, 1400, 720)
         self.main_frame = None                                      # 메인 프레임 창을 저장할 변수
         self.initUI()
@@ -89,30 +89,30 @@ class AdminDetailClass(QMainWindow):
         table_layout.addWidget(self.product_info_2)
 
   
-        # Stt_button 
-        self.Stt_button = QPushButton("음성으로 장바구니 담기.!!", self)
-        # self.Stt_button.clicked.connect(self.record_once)
+        # produc_list
+        self.produc_list_btn = QPushButton("물품 정보 Reset ", self)
+        # self.produc_list_btn.clicked.connect(self.record_once)
 
-        # ❗ 수치로 위치와 크기 지정
-        self.Stt_button.move(10, 470)   # X=150, Y=220
-        self.Stt_button.resize(455, 50)  # 너비 100, 높이 30
+        # ❗ produc_list 수치로 위치와 크기 지정
+        self.produc_list_btn.move(10, 470)   # X=150, Y=220
+        self.produc_list_btn.resize(455, 50)  # 너비 100, 높이 30
 
 
-        # 물품정보 업데이트_button 
-        self.product_update_button = QPushButton("물품 정보 업데이트", self)
-        self.product_update_button.clicked.connect(self.product_update)
+        # Event_error log
+        self.Even_error_btn = QPushButton("Cart Error log Update", self)
+        self.Even_error_btn.clicked.connect(self.product_update)
 
-        # ❗ 물품정보 업데이트 수치로 위치와 크기 지정
-        self.product_update_button.move(470, 470)   # X=150, Y=220
-        self.product_update_button.resize(455, 50)  # 너비 100, 높이 30
+        # ❗ Event_error log 수치로 위치와 크기 지정
+        self.Even_error_btn.move(470, 470)   # X=150, Y=220
+        self.Even_error_btn.resize(455, 50)  # 너비 100, 높이 30
 
-        # PC화면_button 
-        self.browser_button = QPushButton("PC에서 장바구니 담기.!!", self)
-        self.browser_button.clicked.connect(self.pc_browser)
+        # 불량상품 알림 
+        self.none_nomal_btn = QPushButton("불량상품 일림 새로고침.!!", self)
+        self.none_nomal_btn.clicked.connect(self.pc_browser)
 
-        # ❗ 수치로 위치와 크기 지정
-        self.browser_button.move(930, 470)   # X=150, Y=220
-        self.browser_button.resize(455, 50)  # 너비 100, 높이 30
+        # ❗ 불량상품 알림 수치로 위치와 크기 지정
+        self.none_nomal_btn.move(930, 470)   # X=150, Y=220
+        self.none_nomal_btn.resize(455, 50)  # 너비 100, 높이 30
 
 
         self.back_button = QPushButton("뒤로가기", self)

@@ -8,7 +8,7 @@ class MainWindowManager(QMainWindow):
         super().__init__()
 
         # ✅ 주석 해제: 이 창이 메인 창이므로 제목과 크기를 설정합니다.
-        self.setWindowTitle("회원정보 관리 시스템 - Admin 로그인")
+        self.setWindowTitle("Smart Cart 관리 시스템 - Admin")
         self.resize(1280, 720)
 
         # QStackedWidget 생성 (모든 페이지 관리)
