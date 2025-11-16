@@ -145,6 +145,7 @@ class LoginAdminWindow(QWidget):
                 # photo_path=photo_path,
                 # login_window=self
             )
+            
             self.manager.show_page("PoseSubscriber")
 
             self.input_pw.clear()

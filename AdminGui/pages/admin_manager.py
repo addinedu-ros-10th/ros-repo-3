@@ -20,6 +20,7 @@ from PyQt6.QtCore import QTimer, Qt
 class PoseSubscriber(Node):
     def __init__(self, manager):
         super().__init__('pose_subscriber')
+        
         self.manager = manager
         self.robot_pose = None
         self.create_subscription(PoseStamped, '/robot_pose', self.pose_callback, 10)
@@ -146,7 +147,19 @@ class MapWindow(QWidget):
         self.coord_label.setText(f"현재 좌표: ({x:.2f}, {y:.2f})")
 
     def go_to_next_page(self):
-        self.parentWidget().setCurrentIndex(1)
+        # self.manager.show_page("AdminDetailClass")
+        self.parentWidget().setCurrentIndex(1)      # AdminDetailClass > index > 1번 > main.py 확인 가능     
+
+        # 새로운 코드에서는 Manager 없이 순수하게 QStackedWidget만으로 페이지를 전환하고 있습니다.
+
+        # 장점:
+        # Class 간 의존성 줄어듦
+        # Manager 객체 전달 안 해도 됨
+        # QStackedWidget 내부 페이지 이동만 담당
+
+        # 📌 정리
+        # self.parentWidget()	현재 페이지의 부모 QStackedWidget 가져오기
+        # setCurrentIndex(1)	QStackedWidget에서 index 1 페이지로 이동
 
 
 # ============================================

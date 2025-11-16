@@ -10,8 +10,7 @@ from main_window_manager import MainWindowManager
 # 개별 페이지 import
 from pages.login_admin import LoginAdminWindow
 from pages.admin_manager import PoseSubscriber, MapWindow
-
-
+from pages.admin_detail import AdminDetailClass
 
 
 def main():
@@ -29,6 +28,8 @@ def main():
 
     # 페이지 등록
     manager.add_page("LoginAdminWindow", LoginAdminWindow(manager))
+    manager.add_page("AdminDetailClass", AdminDetailClass(manager))
+    
     manager.add_page("PoseSubscriber", MapWindow(ros_node))
     
     # 시작 페이지 설정
