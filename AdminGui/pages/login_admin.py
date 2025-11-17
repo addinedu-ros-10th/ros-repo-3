@@ -47,7 +47,7 @@ class LoginAdminWindow(QWidget):
 
 
     # def make_update_packet(item_id, quantities, recv_flag):
-    def make_update_packet(self, username, function_id):
+    def make_update_packet(self, Transaction_ID, Length_of_data, function_id, username):
     
         """
         매장 물품 정보 업데이트 패킷 생성
@@ -80,16 +80,21 @@ class LoginAdminWindow(QWidget):
         # \x01 은 16진수 01(hex 01) 을 뜻함
         # 16진수 01 = 십진수 1
 
-        SERVER_IP = "127.0.0.1"   # 서버 IP
-        SERVER_PORT = 9500        # 서버 포트
+        SERVER_IP = "192.168.0.180"     # 서버 IP
+        SERVER_PORT = 3000          # 서버 포트
+
 
         username = int(username)
         function_id = int(function_id)
+        Length_of_data = int(Length_of_data)
 
-        packet = struct.pack("<B B",
-                            username,
+        packet = struct.pack("<i i i i",
+                            Transaction_ID,
+                            Length_of_data,
                             function_id,
-        )
+                            username
+                            )
+
         
         self.send_to_server(SERVER_IP, SERVER_PORT, packet)
 
@@ -109,54 +114,79 @@ class LoginAdminWindow(QWidget):
                 client.connect((ip, port))
 
                 print("데이터 전송 중...")
-                client.sendall(packet)
+                client.send(packet)
+                client.send(b"DONE")
 
                 # 서버로부터 응답 받기 (최대 1024바이트)
                 response = client.recv(1024)
-                print("서버 응답:", response.hex())
+                print("서버 응답:", response)
+
+
+                if response == b'\x11\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01':
+            
+                # 로그인 성공
+                    QMessageBox.information(self, "로그인 성공", " 관리자 시스템에 오신걸 환영합니다!")
+
+                    self.main_frame = PoseSubscriber(
+                            manager=self.manager,         # ✅ manager 전달
+                            # username=username, 
+                            # photo_path=photo_path,
+                            # login_window=self
+                        )
+                        
+                    self.manager.show_page("PoseSubscriber")
+
+                    self.input_pw.clear()
+                    self.input_user.clear()
+
+
+                elif response == b"":
+                    QMessageBox.warning(self, "로그인 실패", "등록되지 않은 사용자입니다.")
+                    self.input_pw.clear()
+                else:
+                    QMessageBox.critical(self, "연결 실패", "서버 응답이 없거나 통신 오류가 발생했습니다.")
 
         except Exception as e:
-                print("TCP 통신 오류:", e)
-            
-                return None
+                    print("TCP 통신 오류:", e)
+                
+                    return None
 
 
-  
     def admin_login(self):
         username = self.input_user.text().strip()
         function_id = 1
+        Transaction_ID = 1
+        Length_of_data = 4
 
         if not username:
             QMessageBox.warning(self, "경고", "사용자 이름을 입력하세요.")
             return
 
         # TCP 서버에 로그인 요청
-        response = self.make_update_packet(username, function_id)
+        response = self.make_update_packet(Transaction_ID, Length_of_data, function_id, username)
         
-        print("response : ", response)
+        # if response == b'\x01\x01':
+        #     # 로그인 성공
+        #     QMessageBox.information(self, "로그인 성공", f"{username}님 환영합니다!")
 
-        if response == b'\x01\x01':
-            # 로그인 성공
-            QMessageBox.information(self, "로그인 성공", f"{username}님 환영합니다!")
-
-            self.main_frame = PoseSubscriber(
-                manager=self.manager,         # ✅ manager 전달
-                # username=username, 
-                # photo_path=photo_path,
-                # login_window=self
-            )
+        #     self.main_frame = PoseSubscriber(
+        #         manager=self.manager,         # ✅ manager 전달
+        #         # username=username, 
+        #         # photo_path=photo_path,
+        #         # login_window=self
+        #     )
             
-            self.manager.show_page("PoseSubscriber")
+        #     self.manager.show_page("PoseSubscriber")
 
-            self.input_pw.clear()
-            self.input_user.clear()
+        #     self.input_pw.clear()
+        #     self.input_user.clear()
 
 
-        elif response == "FAIL":
-            QMessageBox.warning(self, "로그인 실패", "등록되지 않은 사용자입니다.")
-            self.input_pw.clear()
-        else:
-            QMessageBox.critical(self, "연결 실패", "서버 응답이 없거나 통신 오류가 발생했습니다.")
+        # elif response == "FAIL":
+        #     QMessageBox.warning(self, "로그인 실패", "등록되지 않은 사용자입니다.")
+        #     self.input_pw.clear()
+        # else:
+        #     QMessageBox.critical(self, "연결 실패", "서버 응답이 없거나 통신 오류가 발생했습니다.")
 
 
 

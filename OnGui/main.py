@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import QApplication
 from main_window_manager import MainWindowManager
 
 # 개별 페이지 import
-from pages.login import LoginWindow
+# from OnGui.pages.backup.login import LoginWindow
 from pages.stt import Sttclass
 from pages.main_frame import MainFrame
 from pages.shopping_list import AutoShoppingClass
@@ -22,7 +22,7 @@ def main():
     manager = MainWindowManager()
 
     # 페이지 등록
-    manager.add_page("LoginWindow", LoginWindow(manager))
+    # manager.add_page("LoginWindow", LoginWindow(manager))
     manager.add_page("Sttclass", Sttclass(manager))
     # manager.add_page("MainFrame", MainFrame(manager, username="test"))
     manager.add_page("MainFrame", MainFrame(manager))

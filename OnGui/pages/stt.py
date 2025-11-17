@@ -140,8 +140,9 @@ class Sttclass(QMainWindow):
         self.back_button.resize(200, 40)  # 너비 100, 높이 30
 
         # 물품정보 업데이트_button 
+        # self.receive_product_info("0.0.0.0", 3000)
         self.product_update_button = QPushButton("물품 정보 업데이트", self)
-        self.product_update_button.clicked.connect(self.product_update)
+        self.product_update_button.clicked.connect(self.receive_product_info)
 
         # ❗ 물품정보 업데이트 수치로 위치와 크기 지정
         self.product_update_button.move(430, 530)   # X=150, Y=220
@@ -165,75 +166,157 @@ class Sttclass(QMainWindow):
         # Whisper 모델 미리 로드
         self.stt_model = whisper.load_model("base")
 
+     
 
-    def product_update(self):
-        customer_id = 2  # 고객 ID(예: 2)
+    def receive_product_info(self, host = "0.0.0.0", port = 3000):
+        """
+        매장 물품 정보(Function ID = 2)를 TCP로 대기하고,
+        72 bytes 데이터를 수신한 뒤 파싱하는 함수.
+        """
 
-        # 1~16번까지 모든 물품 선택
-        selected_items = list(range(1, 17))
+        # 1) 서버 소켓 생성
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_socket.bind((host, port))
+        server_socket.listen(1)
+        print(f"[TCP] {host}:{port} 에서 물품 정보 수신 대기중...")
 
-        # 모든 물품의 수량은 0 (요청 목적)
-        quantities = {i: 0 for i in selected_items}
+        # 2) 클라이언트 접속 허용
+        client_socket, addr = server_socket.accept()
+        print(f"[TCP] 클라이언트 접속: {addr}")
 
-        # 패킷 생성 및 전송
-        packet = self.make_store_item_request(customer_id, selected_items, quantities)
-        self.send_tcp_packet(packet)
-
-    # ---------------------------------------------------------
-    # ② 프로토콜 형식에 맞는 패킷 구성
-    # ---------------------------------------------------------
-    def make_store_item_request(self, customer_id, selected_items, quantities):
-        function_id = 1  # 매장 물품 정보 요청
-
-        # -----------------------------------------------------
-        # (1) 물품 ID bit flag 생성 (1~16번 전부 활성화)
-        # -----------------------------------------------------
-        item_flag = 0
-        for item in selected_items:
-            item_flag |= (1 << (item - 1))  # 모든 비트 켜짐
-
-        # -----------------------------------------------------
-        # (2) 수량 리스트 생성 (항상 16개)
-        # -----------------------------------------------------
-        qty_list = []
-        for i in range(1, 17):
-            qty = quantities.get(i, 0)  # 없으면 0
-            qty_list.append(qty)
-
-        # -----------------------------------------------------
-        # (3) body 생성 - 고객ID + 물품ID(bit) + 수량(16개)
-        # -----------------------------------------------------
-        body = struct.pack(
-            "!B I" + "H" * 16,
-            customer_id,     # 1바이트
-            item_flag,       # 4바이트 물품 비트ID
-            *qty_list        # 16개 x 2바이트
-        )
-
-        # -----------------------------------------------------
-        # (4) 전체 패킷 길이 계산 = header + body
-        # -----------------------------------------------------
-        packet_length = len(body) + 3  # FunctionID(1) + Length(2)
-
-        header = struct.pack("!BH", function_id, packet_length)
-        return header + body
-
-    # ---------------------------------------------------------
-    # ③ TCP 패킷 전송
-    # ---------------------------------------------------------
-    def send_tcp_packet(self, packet):
         try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                sock.connect(("127.0.0.1", 9500))
-                sock.sendall(packet)
+            # 총 패킷 길이 (FunctionID + 72 bytes)
+            total_len = 68
+            
+            data = b""
+            while len(data) < total_len:
+                packet = client_socket.recv(total_len - len(data))
+                if not packet:
+                    print("[TCP] 연결 종료")
+                    break
+                data += packet
 
-                print("전송된 패킷:", packet)
+            if len(data) != total_len:
+                print("[ERROR] 패킷 길이가 맞지 않습니다.")
+                return None
 
-                response = sock.recv(1024)
-                print("서버 응답:", response)
+            # -------------------------------
+            # 3) 패킷 파싱
+            # -------------------------------
 
-        except Exception as e:
-            print("TCP 통신 오류:", e)
+            # Function ID (1 byte)
+            func_id = data[0]
+
+            if func_id != 2:
+                print(f"[ERROR] Function ID가 2가 아닙니다. 받은 값: {func_id}")
+                return None
+
+            # 나머지 데이터 (72 bytes)
+            payload = data[1:]
+
+            # 고객 ID (int, 4 bytes)
+            customer_id = struct.unpack(">I", payload[0:4])[0]
+
+            # 물품 ID (int, 4 bytes)
+            # product_id = struct.unpack(">I", payload[4:8])[0]
+
+            # 물품 수량 (int * 16 = 64 bytes)
+            qty_list = []
+            offset = 8
+            for i in range(16):
+                qty = struct.unpack(">I", payload[offset:offset+4])[0]
+                qty_list.append(qty)
+                offset += 4
+
+            # 결과 출력
+            print("--------[수신된 매장 물품 정보]--------")
+            print(f"Function ID : {func_id}")
+            print(f"고객 ID      : {customer_id}")
+            # print(f"물품 ID      : {product_id}")
+            print(f"수량 리스트  : {qty_list}")
+            print("--------------------------------------")
+
+            return {
+                "func_id": func_id,
+                "customer_id": customer_id,
+                "product_id": product_id,
+                "qty_list": qty_list
+            }
+
+        finally:
+            client_socket.close()
+            server_socket.close()
+
+
+
+    # def product_update(self):
+    #     customer_id = 2  # 고객 ID(예: 2)
+
+    #     # 1~16번까지 모든 물품 선택
+    #     selected_items = list(range(1, 17))
+
+    #     # 모든 물품의 수량은 0 (요청 목적)
+    #     quantities = {i: 0 for i in selected_items}
+
+    #     # 패킷 생성 및 전송
+    #     packet = self.make_store_item_request(customer_id, selected_items, quantities)
+    #     self.send_tcp_packet(packet)
+
+    # # ---------------------------------------------------------
+    # # ② 프로토콜 형식에 맞는 패킷 구성
+    # # ---------------------------------------------------------
+    # def make_store_item_request(self, customer_id, selected_items, quantities):
+    #     function_id = 1  # 매장 물품 정보 요청
+
+    #     # -----------------------------------------------------
+    #     # (1) 물품 ID bit flag 생성 (1~16번 전부 활성화)
+    #     # -----------------------------------------------------
+    #     item_flag = 0
+    #     for item in selected_items:
+    #         item_flag |= (1 << (item - 1))  # 모든 비트 켜짐
+
+    #     # -----------------------------------------------------
+    #     # (2) 수량 리스트 생성 (항상 16개)
+    #     # -----------------------------------------------------
+    #     qty_list = []
+    #     for i in range(1, 17):
+    #         qty = quantities.get(i, 0)  # 없으면 0
+    #         qty_list.append(qty)
+
+    #     # -----------------------------------------------------
+    #     # (3) body 생성 - 고객ID + 물품ID(bit) + 수량(16개)
+    #     # -----------------------------------------------------
+    #     body = struct.pack(
+    #         "!B I" + "H" * 16,
+    #         customer_id,     # 1바이트
+    #         item_flag,       # 4바이트 물품 비트ID
+    #         *qty_list        # 16개 x 2바이트
+    #     )
+
+    #     # -----------------------------------------------------
+    #     # (4) 전체 패킷 길이 계산 = header + body
+    #     # -----------------------------------------------------
+    #     packet_length = len(body) + 3  # FunctionID(1) + Length(2)
+
+    #     header = struct.pack("!BH", function_id, packet_length)
+    #     return header + body
+
+    # # ---------------------------------------------------------
+    # # ③ TCP 패킷 전송
+    # # ---------------------------------------------------------
+    # def send_tcp_packet(self, packet):
+    #     try:
+    #         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+    #             sock.connect(("127.0.0.1", 9500))
+    #             sock.sendall(packet)
+
+    #             print("전송된 패킷:", packet)
+
+    #             response = sock.recv(1024)
+    #             print("서버 응답:", response)
+
+    #     except Exception as e:
+    #         print("TCP 통신 오류:", e)
 
     def pc_browser(self):
         self.manager.show_page("PC_BrowserClass")
