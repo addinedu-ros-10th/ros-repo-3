@@ -14,7 +14,7 @@ import numpy as np
 import whisper
 import sounddevice as sd
 
-from pro_update import ProUpdateClass
+from pages.pro_update import ProUpdateClass
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from db_connect import get_connection
