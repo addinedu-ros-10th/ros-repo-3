@@ -157,19 +157,26 @@ class LoginTcpWindow(QWidget):
                     self.input_pw.clear()
                     self.input_user.clear()
 
-
-                    # 서버로부터 응답 받기 (최대 1024바이트)
-                    response = self.tcp_socket.recv(1024)
-
-                    # print("서버 응답:", response.hex())
                     print("서버 응답:", response)
 
 
-                elif response == "FAIL":
-                    QMessageBox.warning(self, "로그인 실패", "등록되지 않은 사용자입니다.")
-                    self.input_pw.clear()
+                elif response == b'\x11\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x00' :
+                        QMessageBox.warning(self, "로그인 실패", "등록되지 않은 사용자입니다.")
+                        self.input_pw.clear()
                 else:
-                    QMessageBox.critical(self, "연결 실패", "서버 응답이 없거나 통신 오류가 발생했습니다.")
+                        QMessageBox.critical(self, "연결 실패", "서버 응답이 없거나 통신 오류가 발생했습니다.")
+
+
+                        # 서버로부터 응답 받기 (최대 1024바이트)
+                        # prd_response = self.tcp_socket.recv(1024)
+
+                         # ⭐ 매장 상품 데이터 응답(2번째 응답) 수신 > 최대 1024
+                        prd_response = self.tcp_socket.recv(1024)
+                        print("상품 정보 응답:", prd_response)
+
+                        # ⭐ Sttclass 에 전달
+                        self.manager.shared_product_data = prd_response
+
 
                     # return response
 
@@ -178,54 +185,28 @@ class LoginTcpWindow(QWidget):
                     
                     return None
 
+    def parse_product_response(self, data: bytes):
+        """
+        서버가 보내온 상품 정보 응답 파싱
+        ID 16개 + QTY 16개 구조로 구성됨
+        """
+        # 예: DONE(4) + ID16개 + QTY16개 + DONE(4)
+        # 단순화를 위해 숫자 데이터만 추출
 
-    # def tcp_request_login(self, username):
-    #     """
-    #     서버에 로그인 요청을 보내고 응답을 받는다.
-    #     서버로 username을 전송하면, 서버는 OK 또는 FAIL 응답을 돌려줌.
-    #     """
-    #     SERVER_IP = "127.0.0.1"   # 서버 IP
-    #     SERVER_PORT = 9500        # 서버 포트
+        # 4바이트 'DONE' 제거
+        data = data[4:]  # 앞 'DONE' 제거
+        data = data[:-4] # 뒤 'DONE' 제거
+
+        # 남은 데이터는 32개의 int32 구성
+        count = len(data) // 4
+        nums = struct.unpack("<" + "i" * count, data)
+
+        ids = nums[:16]
+        qtys = nums[16:32]
+
+        return ids, qtys
 
 
-        # try:
-        #     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
-        #         client.connect((SERVER_IP, SERVER_PORT))
-
-        #         # username을 bytes로 변환
-        #         username_bytes = username.encode('utf-8')
-        #         length = len(username_bytes)
-
-        #         # struct.pack("!B", 길이) → 1바이트 길이 정보
-        #         header = struct.pack("!B", length)
-
-        #         # 최종 전송 데이터 = 헤더(1바이트) + 실제 문자열 데이터
-        #         send_data = header + username_bytes
-        #         print("send_data : ", send_data)
-
-        #         client.sendall(send_data)
-
-        #         # 서버 응답 수신
-        #         response = client.recv(1024).decode('utf-8').strip()
-
-                
-        #         return response
-        # except Exception as e:
-        #     print("TCP 통신 오류:", e)
-        #     return None
-        
-        # try:
-        #     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
-        #         client.connect((SERVER_IP, SERVER_PORT))
-        #         # username 전송
-        #         client.sendall(username.encode('utf-8'))
-
-        #         # 서버 응답 수신
-        #         response = client.recv(1024).decode('utf-8').strip()
-        #         return response
-        # except Exception as e:
-        #     print("TCP 통신 오류:", e)
-        #     return None
 
     # -------------------------------
     # 로그인 버튼 클릭 시 동작
@@ -250,32 +231,7 @@ class LoginTcpWindow(QWidget):
         # TCP 서버에 로그인 요청
         response = self.make_update_packet(Transaction_ID, Length_of_data, function_id, username)
         
-        # print("response : ", response)
 
-        # if response == b'\x02\x01':
-        #     # 로그인 성공
-        #     QMessageBox.information(self, "로그인 성공", f"{username}님 환영합니다!")
-
-        #     self.main_frame = MainFrame(
-        #         manager=self.manager,
-        #         username=username,
-        #         photo_path="",      # 서버에서 따로 받을 수도 있음
-        #         login_window=self
-        #     )
-        #     self.manager.show_page("MainFrame")
-
-        #     self.input_pw.clear()
-        #     self.input_user.clear()
-
-
-        # elif response == "FAIL":
-        #     QMessageBox.warning(self, "로그인 실패", "등록되지 않은 사용자입니다.")
-        #     self.input_pw.clear()
-        # else:
-        #     QMessageBox.critical(self, "연결 실패", "서버 응답이 없거나 통신 오류가 발생했습니다.")
-
-    # def admin_login(self):
-    #     self.manager.show_page("LoginAdminWindow")
 
 
 if __name__ == "__main__":

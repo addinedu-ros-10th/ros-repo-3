@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QPushB
 from PyQt6.QtCore import Qt
 
 # MainFrame 클래스를 pages/main_frame.py에서 가져옵니다.
-from .main_frame import MainFrame
+from ..main_frame import MainFrame
 
 # 상위 폴더 경로 추가
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
