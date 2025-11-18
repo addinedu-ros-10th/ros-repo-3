@@ -14,10 +14,22 @@ import time
 import threading
 import queue
 import struct
+import mysql.connector
+from .awsconfig import *
+
 
 class MarketCoreManager(Node):
     def __init__(self):
         super().__init__('MarketCoreManager')
+
+        self.dbms = mysql.connector.connect(
+            host = AWSHOST,
+            port = AWSPORT,
+            user = AWSUSER,
+            password = AWSPASSWORD,
+            database = AWSDATABASE
+        )
+        self.cursor = self.dbms.cursor()
 
         self.ongui_recv_queue = queue.Queue(maxsize=1)
         self.admingui_recv_queue = queue.Queue(maxsize=1)
@@ -59,43 +71,59 @@ class MarketCoreManager(Node):
     def ongui_socket_start(self) -> None:
         self.ongui_socket.init_socket()
 
-        connection_thread = threading.Thread(target=self.ongui_socket.connect_socket, daemon=True)
-        self.thread_list.append(connection_thread)
+        self.connection_thread = threading.Thread(target=self.ongui_socket.connect_socket, daemon=True)
+        self.thread_list.append(self.connection_thread)
         
-        recv_thread = threading.Thread(target=self.ongui_socket.recv_data, args=(self.ongui_recv_queue,), daemon=True)
-        self.thread_list.append(recv_thread)
+        self.recv_thread = threading.Thread(target=self.ongui_socket.recv_data, args=(self.ongui_recv_queue,), daemon=True)
+        self.thread_list.append(self.recv_thread)
 
     def admingui_socket_start(self) -> None:
         self.admingui_socket.init_socket()
 
-        connection_thread = threading.Thread(target=self.admingui_socket.connect_socket, daemon=True)
-        self.thread_list.append(connection_thread)
+        self.connection_thread = threading.Thread(target=self.admingui_socket.connect_socket, daemon=True)
+        self.thread_list.append(self.connection_thread)
 
-        recv_thread = threading.Thread(target=self.admingui_socket.recv_data, args=(self.admingui_recv_queue,), daemon=True)
-        self.thread_list.append(recv_thread)
+        self.recv_thread = threading.Thread(target=self.admingui_socket.recv_data, args=(self.admingui_recv_queue,), daemon=True)
+        self.thread_list.append(self.recv_thread)
 
     def ongui_recv_callback(self):
         while True:
             if self.ongui_recv_queue.full():
                 data = self.ongui_recv_queue.get_nowait()
+                print(data)
                 self.ongui_data_check(data)
             else:
                 pass
             time.sleep(0.1)
 
     def ongui_data_check(self, data):
-        if (int(data[0:4]) != 1):
+        if (struct.unpack("<i",data[0:4])[0] != 1):
             self.get_logger().info(f"WRONG DATA DESTINATION FROM ONGUI")
             return
         
-        if (int(data[8:12]) == ONGUI_REQ1_ID):
+        if (struct.unpack("<i",data[8:12])[0] == ONGUI_REQ1_ID):
             unpacked_data = struct.unpack(ONGUI_REQ1, data[12:])
-            send_data = struct.pack(INTERFACECOMMON+ONGUI_RECV1, ONGUI_ID, 1, ONGUI_RECV1_ID, True)
-            self.ongui_socket.send_data(send_data)
-            send_data = struct.pack(INTERFACECOMMON+ONGUI_RECV2, ONGUI_ID, 65, ONGUI_RECV2_ID, 1)
+            self.cursor.execute("SELECT id FROM user_info")
+            result = self.cursor.fetchall()
+            data = False
+            for i in result:
+                if (i[0] == unpacked_data[0]):
+                    data = True
+                    break
+            
+            send_data = struct.pack(INTERFACECOMMON+ONGUI_RECV1, ONGUI_ID, 1, ONGUI_RECV1_ID, data)
             self.ongui_socket.send_data(send_data)
 
-        elif (int(data[8:12]) == ONGUI_REQ2_ID):
+            self.cursor.execute("SELECT quantity FROM item_list")
+            result = self.cursor.fetchall()
+            data = []
+            for i in result:
+                data.append(i[0])
+            
+            send_data = struct.pack(INTERFACECOMMON+ONGUI_RECV2, ONGUI_ID, 68, ONGUI_RECV2_ID, unpacked_data[0],  *[i for i in range(16)])
+            self.ongui_socket.send_data(send_data)
+
+        elif (struct.unpack("<i",data[8:12])[0] == ONGUI_REQ2_ID):
             unpacked_data = struct.unpack(ONGUI_REQ2, data[12:])
             send_data = struct.pack(INTERFACECOMMON+ONGUI_RECV3, ONGUI_ID,  1, ONGUI_RECV3_ID, True)
             self.ongui_socket.send_data(send_data)
@@ -107,24 +135,25 @@ class MarketCoreManager(Node):
         while True:
             if self.admingui_recv_queue.full():
                 data = self.admingui_recv_queue.get_nowait()
+                print(data)
                 self.admingui_data_check(data)
             else:
                 pass
             time.sleep(0.1)
     
     def admingui_data_check(self, data):
-        if (int(data[0:4]) != 1):
+        if (struct.unpack("<i",data[0:4])[0] != 1):
             self.get_logger().info(f"WRONG DATA DESTINATION FROM ADMINGUI")
             return
                 
-        if (int(data[8:12]) == ADMINGUI_REQ1_ID):
+        if (struct.unpack("<i",data[8:12])[0] == ADMINGUI_REQ1_ID):
             unpacked_data = struct.unpack(ONGUI_REQ1, data[12:])
             send_data = struct.pack(INTERFACECOMMON+ADMINGUI_RECV1, ADMINGUI_ID, 1, ADMINGUI_RECV1_ID, True)
             self.admingui_socket.send_data(send_data)
             send_data = struct.pack(INTERFACECOMMON+ADMINGUI_RECV2, ADMINGUI_ID, 65, ADMINGUI_RECV2_ID, 1)
             self.admingui_socket.send_data(send_data)
 
-        elif (int(data[8:12]) == ADMINGUI_REQ2_ID):
+        elif (struct.unpack("<i",data[8:12])[0] == ADMINGUI_REQ2_ID):
             unpacked_data = struct.unpack(ONGUI_REQ2, data[12:])
             send_data = struct.pack(INTERFACECOMMON+ADMINGUI_RECV3, ADMINGUI_ID,  1, ADMINGUI_RECV3_ID, True)
             self.admingui_socket.send_data(send_data)
@@ -155,8 +184,10 @@ class MarketCoreManager(Node):
         self.admingui_socket.send_data(send_data)
 
     def __del__(self):
+        self.dbms.close()
         for t in self.thread_list:
             t.join()
+        
         
 
 def main(args=None):

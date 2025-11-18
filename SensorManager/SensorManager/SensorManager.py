@@ -23,7 +23,7 @@ class SensorManager(Node):
 
         self.percentage_publisher = self.create_publisher(
             Float32,
-            'battery/present',
+            BATTERY_FRAMEID,
             10
         )
 
