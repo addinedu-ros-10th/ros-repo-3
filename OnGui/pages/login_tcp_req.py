@@ -77,17 +77,7 @@ class LoginTcpWindow(QWidget):
         #                     recv_flag)
         #     return packet
 
-        # packet = struct.pack("<i i i i",
-        #                     Transaction_ID,
-        #                     Length_of_data,
-        #                     Function_ID,
-        #                     username
-        #                     )
-        #  return packet
 
-
-        
-        
         # ✅ 1. b'\x01' 의 뜻
 
         # 앞의 b 는 이 값이 바이트(byte) 타입이라는 의미
@@ -95,7 +85,8 @@ class LoginTcpWindow(QWidget):
         # 16진수 01 = 십진수 1
 
         SERVER_IP = "192.168.0.180"     # 서버 IP
-        SERVER_PORT = 3000          # 서버 포트
+        # SERVER_IP = "0.0.0.0"                # 서버 IP
+        SERVER_PORT = 3000              # 서버 포트
 
         username = int(username)
         function_id = int(function_id)
@@ -142,8 +133,8 @@ class LoginTcpWindow(QWidget):
                 
                 # b'\x11\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x00 > false
                 if response == b'\x11\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01':
-                    # 로그인 성공
-                    # QMessageBox.information(self, "로그인 성공", f"{username}님 환영합니다!")
+                # 로그인 성공
+                # QMessageBox.information(self, "로그인 성공", f"{username}님 환영합니다!")
                     QMessageBox.information(self, "로그인 성공", "스마트 쇼핑에 오신 걸 환영합니다!")
 
                     self.main_frame = MainFrame(
@@ -159,6 +150,13 @@ class LoginTcpWindow(QWidget):
 
                     print("서버 응답:", response)
 
+                    # ⭐ 매장 상품 데이터 응답(2번째 응답) 수신 > 최대 1024
+                    prd_response = self.tcp_socket.recv(1024)
+                    print("상품 정보 응답:", prd_response)
+
+                    # ⭐ Sttclass 에 전달
+                    self.manager.shared_product_data = prd_response
+
 
                 elif response == b'\x11\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x00' :
                         QMessageBox.warning(self, "로그인 실패", "등록되지 않은 사용자입니다.")
@@ -167,45 +165,20 @@ class LoginTcpWindow(QWidget):
                         QMessageBox.critical(self, "연결 실패", "서버 응답이 없거나 통신 오류가 발생했습니다.")
 
 
-                        # 서버로부터 응답 받기 (최대 1024바이트)
-                        # prd_response = self.tcp_socket.recv(1024)
-
-                         # ⭐ 매장 상품 데이터 응답(2번째 응답) 수신 > 최대 1024
-                        prd_response = self.tcp_socket.recv(1024)
-                        print("상품 정보 응답:", prd_response)
-
-                        # ⭐ Sttclass 에 전달
-                        self.manager.shared_product_data = prd_response
-
-
-                    # return response
 
         except Exception as e:
                     print("TCP 통신 오류:", e)
                     
                     return None
+        
+    # def __del__(self):
+    #     self.tcp_socket.close()
 
-    def parse_product_response(self, data: bytes):
-        """
-        서버가 보내온 상품 정보 응답 파싱
-        ID 16개 + QTY 16개 구조로 구성됨
-        """
-        # 예: DONE(4) + ID16개 + QTY16개 + DONE(4)
-        # 단순화를 위해 숫자 데이터만 추출
-
-        # 4바이트 'DONE' 제거
-        data = data[4:]  # 앞 'DONE' 제거
-        data = data[:-4] # 뒤 'DONE' 제거
-
-        # 남은 데이터는 32개의 int32 구성
-        count = len(data) // 4
-        nums = struct.unpack("<" + "i" * count, data)
-
-        ids = nums[:16]
-        qtys = nums[16:32]
-
-        return ids, qtys
-
+    def close_connection(self):
+        try:
+            self.tcp_socket.close()
+        except:
+            pass
 
 
     # -------------------------------
@@ -231,7 +204,6 @@ class LoginTcpWindow(QWidget):
         # TCP 서버에 로그인 요청
         response = self.make_update_packet(Transaction_ID, Length_of_data, function_id, username)
         
-
 
 
 if __name__ == "__main__":

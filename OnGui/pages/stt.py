@@ -3,7 +3,8 @@ import os
 import sys
 import socket
 import struct
-from PyQt6.QtGui import QPixmap, QColor
+from PyQt6.QtGui import QPixmap, QColor, QCloseEvent
+from PyQt6.QtCore import Qt, QEvent     # QEvent 또는 QShowEvent
 from PyQt6.QtWidgets import *
 from PyQt6 import uic
 from PyQt6.QtCore import Qt
@@ -26,6 +27,27 @@ OUTPUT_FILE = "temp.wav"
 
 class Sttclass(QMainWindow):
 
+    def parse_product_response(self, data: bytes):
+        """
+        서버가 보내온 상품 정보 응답 파싱
+        ID 16개 + QTY 16개 구조로 구성됨
+        """
+        # 예: DONE(4) + ID16개 + QTY16개 + DONE(4)
+        # 단순화를 위해 숫자 데이터만 추출
+
+        # 4바이트 'DONE' 제거
+        data = data[4:]  # 앞 'DONE' 제거
+        data = data[:-4] # 뒤 'DONE' 제거
+
+        # 남은 데이터는 32개의 int32 구성
+        count = len(data) // 4
+        nums = struct.unpack("<" + "i" * count, data)
+
+        ids = nums[:16]
+        qtys = nums[16:32]
+
+        return ids, qtys
+
 
     def __init__(self, manager=None):
         super().__init__()
@@ -34,13 +56,13 @@ class Sttclass(QMainWindow):
         self.setWindowTitle("구매희망 리스트 선택 화면")
         self.setGeometry(100, 100, 1280, 720)
         self.main_frame = None     # 메인 프레임 창을 저장할 변수
+        self.initUI()
 
         # 로그인 단계에서 받아온 상품 데이터를 자동 로딩
         if hasattr(self.manager, "shared_product_data"):
             self.load_product_table(self.manager.shared_product_data)
 
 
-        self.initUI()
 
     def initUI(self):
         # QMainWindow는 레이아웃을 위해 Central Widget이 필요합니다.
@@ -101,22 +123,6 @@ class Sttclass(QMainWindow):
         main_layout.setContentsMargins(430, 30, 300, 300)  # 왼쪽, 위, 오른쪽, 아래 여백(px)
         main_layout.setSpacing(20)  # 위젯 간 간격
 
-        
-        
-        # --- 2. 마이크 이모티콘 라벨 ---
-        # self.photo_label = QLabel(central_widget) # 부모 지정
-        # self.photo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
-        # pixmap = QPixmap()
-        # if pixmap.isNull():
-        #     pixmap = QPixmap(450,300)
-        #     pixmap.fill(QColor("gray"))
-        
-        # self.photo_label.setPixmap(pixmap.scaled(450, 450, Qt.AspectRatioMode.KeepAspectRatio))
-
-        # # ❗ 수치로 위치와 크기 지정 (창의 중앙 근처)
-        # self.photo_label.move(410, 30)    # X=150, Y=80
-        # self.photo_label.resize(500, 300) # 너비 100, 높이 100
 
         # Stt_button 
         self.Stt_button = QPushButton("음성으로 장바구니 담기.!!", self)
@@ -170,37 +176,88 @@ class Sttclass(QMainWindow):
         # Whisper 모델 미리 로드
         self.stt_model = whisper.load_model("base")
 
-     
 
-        def load_product_table(self, raw_data: bytes):
-            """
-            login_tcp_req.py → manager.shared_product_data 로 전달된 상품정보를
-            QTableWidget 에 표시하는 함수
-            """
 
-            # 1) 앞뒤 DONE 제거
-            data = raw_data[4:-4]
+    # ✅ 3. showEvent 함수 추가
+    def showEvent(self, event: QEvent):
+        """
+        이 창이 화면에 나타날 때마다 Qt에 의해 자동으로 호출됩니다.
+        """
+        print("Sttclass 창이 보입니다. 데이터를 로드합니다.")
+        
+        # 매니저에 공유 데이터가 있는지 확인
+        if hasattr(self.manager, "shared_product_data") and self.manager.shared_product_data:
+            # 데이터가 있다면 테이블 로드 함수 호출
+            self.load_product_table(self.manager.shared_product_data)
+        else:
+            # 데이터가 없으면 테이블을 비웁니다 (선택 사항)
+            self.product_info.setRowCount(0) 
+            print("아직 공유된 상품 데이터가 없습니다.")
+            
+        # 부모의 showEvent를 호출해줘야 합니다.
+        super().showEvent(event)
 
-            # 2) int32 32개 파싱 (ID 16개 + QTY 16개)
-            total_count = len(data) // 4
-            values = struct.unpack("<" + "i" * total_count, data)
+ 
 
-            ids = values[:16]
-            qtys = values[16:32]
+    def load_product_table(self, raw_data: bytes):
+        """
+        login_tcp_req.py → manager.shared_product_data 로 전달된 상품정보를
+        QTableWidget 에 표시하는 함수
+        """
 
-            # 3) GUI 테이블 초기화
-            self.product_info.setRowCount(16)
+        # 1) 앞뒤 DONE 제거
+        data = raw_data[4:-4]
 
-            for i in range(16):
-                id_item = QTableWidgetItem(str(ids[i]))
-                qty_item = QTableWidgetItem(str(qtys[i]))
-                recv_item = QTableWidgetItem("OK")   # RECV 임의값 저장
+        # 2. 4바이트씩 나누어 숫자로 변환
+        numbers = []
+        for i in range(0, len(data), 4):
+            value = struct.unpack('<I', data[i:i+4])[0]
+            numbers.append(value)
 
-                self.product_info.setItem(i, 0, id_item)
-                self.product_info.setItem(i, 1, qty_item)
-                self.product_info.setItem(i, 2, recv_item)
+        # 3. 결과 출력
+        print(numbers)
 
-            self.product_info.resizeColumnsToContents()
+        # 2) int32 32개 파싱 (ID 16개 + QTY 16개)
+        total_count = len(data) // 4
+        values = struct.unpack("<" + "i" * total_count, data)
+
+        # 3) 받은 데이터의 절반을 ID/QTY 개수로 계산
+        #    (total_count가 20이면, num_items는 10이 됨)
+        num_items = total_count // 2 
+
+        ids = values[:num_items]   # 0번부터 9번까지 (10개)
+        qtys = values[num_items:]  # 10번부터 19번까지 (10개)
+
+        # 3) GUI 테이블 초기화 (16줄이 아닌, 받은 만큼만)
+        self.product_info.setRowCount(num_items)
+
+        # 16번이 아닌, 받은 개수(num_items)만큼만 반복
+        for i in range(num_items):
+            # i가 0~9까지 돌기 때문에 IndexError가 발생하지 않음
+            id_item = QTableWidgetItem(str(ids[i]))
+            qty_item = QTableWidgetItem(str(qtys[i]))
+            recv_item = QTableWidgetItem("OK")   # RECV 임의값 저장
+
+            self.product_info.setItem(i, 0, id_item)
+            self.product_info.setItem(i, 1, qty_item)
+            self.product_info.setItem(i, 2, recv_item)
+
+        # ids = values[:16]
+        # qtys = values[16:32]
+
+        # # 3) GUI 테이블 초기화
+        # self.product_info.setRowCount(16)
+
+        # for i in range(16):
+        #     id_item = QTableWidgetItem(str(ids[i]))
+        #     qty_item = QTableWidgetItem(str(qtys[i]))
+        #     recv_item = QTableWidgetItem("OK")   # RECV 임의값 저장
+
+        #     self.product_info.setItem(i, 0, id_item)
+        #     self.product_info.setItem(i, 1, qty_item)
+        #     self.product_info.setItem(i, 2, recv_item)
+
+        self.product_info.resizeColumnsToContents()
 
 
     def pc_browser(self):

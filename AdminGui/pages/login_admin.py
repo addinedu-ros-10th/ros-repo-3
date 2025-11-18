@@ -19,6 +19,8 @@ class LoginAdminWindow(QWidget):
         super().__init__()
         self.manager = manager
         self.main_frame = None
+        self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
+
         self.initUI()
 
     def initUI(self):
@@ -109,16 +111,17 @@ class LoginAdminWindow(QWidget):
 
         try:
             
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
+            # with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
+                        
                 print(f"서버({ip}:{port})에 연결 중...")
-                client.connect((ip, port))
+                self.tcp_socket.connect((ip, port))
 
                 print("데이터 전송 중...")
-                client.send(packet)
-                client.send(b"DONE")
+                self.tcp_socket.send(packet)
+                self.tcp_socket.send(b"DONE")
 
                 # 서버로부터 응답 받기 (최대 1024바이트)
-                response = client.recv(1024)
+                response = self.tcp_socket.recv(1024)
                 print("서버 응답:", response)
 
 
