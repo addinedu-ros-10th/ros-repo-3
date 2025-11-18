@@ -21,45 +21,52 @@ class TCPSocket():
                 continue
 
     def connect_socket(self):
+        print("Socket listening")
         while True:
             if self.connected == False:
-                print("Socket listening")
-                self.tcp_socket.listen()
-                self.conn, _ = self.tcp_socket.accept()
-                self.connected = True
+                try:
+                    self.tcp_socket.settimeout(1)
+                    self.tcp_socket.listen()
+                    self.conn, _addr = self.tcp_socket.accept()
+                    print(f"Socket Connected!: {_addr}")
+                    self.connected = True
+                    self.tcp_socket.settimeout(None)
+                except Exception as e:
+                    pass
             else:
                 time.sleep(1)
 
-    def recv_data(self, ongui_recv_queue: queue.Queue):
+    def recv_data(self, queue: queue.Queue):
         data = b""
         while True:
             if self.connected == True:
                 try:
                     buffer = self.conn.recv(1024)
                     if len(buffer) > 0:
-                        if (buffer == b"\n"):
-                            if ongui_recv_queue.full():
-                                ongui_recv_queue.get_nowait()
-                            ongui_recv_queue.put_nowait(data)
+                        data += buffer
+                        if (data[-4:] == b"DONE"):
+                            if queue.full():
+                                queue.get_nowait()
+                            queue.put_nowait(data[:-4])
                             data = b""
-                            break
+                            buffer = b""
                         else:
-                            data += buffer
+                            pass
                     else:
                         pass
                 except BrokenPipeError:
-                    self.tcp_socket.close()
+                    print("Pipe Broken")
                     self.connected = False
-                    break
                 except Exception as e:
                     print(e)
+                    self.connected = False
             else:
                 pass
             time.sleep(0.1)
     
     def send_data(self, data):
-        self.tcp_socket.send(data)
-        self.tcp_socket.send(b"\n")
+        self.conn.send(data)
+        self.conn.send(b"DONE")
     
     def __del__(self):
         self.tcp_socket.close()
