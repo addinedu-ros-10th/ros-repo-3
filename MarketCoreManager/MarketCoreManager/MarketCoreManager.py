@@ -49,10 +49,6 @@ class MarketCoreManager(Node):
 
         self.ongui_socket_start()
         self.admingui_socket_start()
-        ongui_callback_thread = threading.Thread(target=self.ongui_recv_callback, daemon=True)
-        admin_callback_thread = threading.Thread(target=self.admingui_recv_callback, daemon=True)
-        self.thread_list.append(ongui_callback_thread)
-        self.thread_list.append(admin_callback_thread)
         
         self.robot_status_subscriber = self.create_subscription(
             RobotState,
@@ -131,20 +127,26 @@ class MarketCoreManager(Node):
     def ongui_socket_start(self) -> None:
         self.ongui_socket.init_socket()
 
-        self.connection_thread = threading.Thread(target=self.ongui_socket.connect_socket, daemon=True)
-        self.thread_list.append(self.connection_thread)
+        connection_thread = threading.Thread(target=self.ongui_socket.connect_socket, daemon=True)
+        self.thread_list.append(connection_thread)
         
-        self.recv_thread = threading.Thread(target=self.ongui_socket.recv_data, args=(self.ongui_recv_queue,), daemon=True)
-        self.thread_list.append(self.recv_thread)
+        recv_thread = threading.Thread(target=self.ongui_socket.recv_data, args=(self.ongui_recv_queue,), daemon=True)
+        self.thread_list.append(recv_thread)
+
+        ongui_callback_thread = threading.Thread(target=self.ongui_recv_callback, daemon=True)
+        self.thread_list.append(ongui_callback_thread)
 
     def admingui_socket_start(self) -> None:
         self.admingui_socket.init_socket()
 
-        self.connection_thread = threading.Thread(target=self.admingui_socket.connect_socket, daemon=True)
-        self.thread_list.append(self.connection_thread)
+        connection_thread = threading.Thread(target=self.admingui_socket.connect_socket, daemon=True)
+        self.thread_list.append(connection_thread)
 
-        self.recv_thread = threading.Thread(target=self.admingui_socket.recv_data, args=(self.admingui_recv_queue,), daemon=True)
-        self.thread_list.append(self.recv_thread)
+        recv_thread = threading.Thread(target=self.admingui_socket.recv_data, args=(self.admingui_recv_queue,), daemon=True)
+        self.thread_list.append(recv_thread)
+
+        admin_callback_thread = threading.Thread(target=self.admingui_recv_callback, daemon=True)
+        self.thread_list.append(admin_callback_thread)
 
     def ongui_recv_callback(self):
         while True:
@@ -157,7 +159,7 @@ class MarketCoreManager(Node):
             time.sleep(0.1)
 
     def ongui_data_check(self, data):
-        if (struct.unpack("<i",data[0:4])[0] != 1):
+        if (struct.unpack("<i",data[0:4])[0] != MARKETCOREMANAGER_ID):
             self.get_logger().info(f"WRONG DATA DESTINATION FROM ONGUI")
             return
         
@@ -210,7 +212,7 @@ class MarketCoreManager(Node):
             time.sleep(0.1)
     
     def admingui_data_check(self, data):
-        if (struct.unpack("<i",data[0:4])[0] != 1):
+        if (struct.unpack("<i",data[0:4])[0] != MARKETCOREMANAGER_ID):
             self.get_logger().info(f"WRONG DATA DESTINATION FROM ADMINGUI")
             return
                 
