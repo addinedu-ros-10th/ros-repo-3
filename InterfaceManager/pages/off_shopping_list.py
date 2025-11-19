@@ -71,9 +71,24 @@ class AutoShoppingClass(QMainWindow):
         self.Stt_button.move(430, 550)   # X=150, Y=220
         self.Stt_button.resize(450, 50)  # 너비 100, 높이 30
         
+        # Guide_mode_button 
+        
+        self.Guide_mode_button = QPushButton("가이드 모드", self)
+        # self.Guide_mode_button.clicked.connect(self.Guide_mode)
 
-        # 레이아웃에 위젯 추가
-        central_widget.setLayout(main_layout)
+        # ❗ Guide_mode 수치로 위치와 크기 지정
+        self.Guide_mode_button.move(100, 100)   # X=150, Y=220
+        self.Guide_mode_button.resize(210, 50)  # 너비 100, 높이 30
+
+        # Folling_mode_button 
+        
+        self.Folling_mode_button = QPushButton("팔로잉 모드", self)
+        # self.Folling_mode_button.clicked.connect(self.Folling_mode)
+
+        # ❗ Folling_mode 수치로 위치와 크기 지정
+        self.Folling_mode_button.move(100, 200)   # X=150, Y=220
+        self.Folling_mode_button.resize(210, 50)  # 너비 100, 높이 30
+     
         
 
         # back_button 
@@ -91,6 +106,9 @@ class AutoShoppingClass(QMainWindow):
         # ❗ 수치로 위치와 크기 지정
         self.shopping_start_button.move(430, 620)   # X=150, Y=220
         self.shopping_start_button.resize(450, 50)  # 너비 100, 높이 30
+
+        # 레이아웃에 위젯 추가
+        central_widget.setLayout(main_layout)
 
   
 

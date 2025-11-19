@@ -148,15 +148,6 @@ class Sttclass(QMainWindow):
         self.back_button.move(100, 40)   # X=150, Y=220
         self.back_button.resize(200, 40)  # 너비 100, 높이 30
 
-        # # 물품정보 업데이트_button 
-        # # self.receive_product_info("0.0.0.0", 3000)
-        # self.product_update_button = QPushButton("물품 정보 업데이트", self)
-        # self.product_update_button.clicked.connect(self.receive_product_info)
-
-        # # ❗ 물품정보 업데이트 수치로 위치와 크기 지정
-        # self.product_update_button.move(430, 530)   # X=150, Y=220
-        # self.product_update_button.resize(210, 50)  # 너비 100, 높이 30
-
 
         # 온라인 쇼핑 시작_button 
         self.shopping_start_button = QPushButton("쇼핑리스트 보러가기", self)

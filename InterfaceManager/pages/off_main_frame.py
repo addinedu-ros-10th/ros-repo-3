@@ -89,6 +89,7 @@ class MainFrame(QMainWindow):
         event.accept()
 
 if __name__ == "__main__":
+
     app = QApplication(sys.argv)
     
     # 아래의 코드는 main_frame.py 파일 단독으로 테스트 할 때 필요함 
@@ -96,8 +97,8 @@ if __name__ == "__main__":
         def show(self):
             print("로그인 창이 다시 나타났습니다.")
             
-    test_frame = MainFrame(
-        username="테스트 사용자", 
+    test_frame = MainFrame( 
+        username="test", 
         photo_path="invalid_path.png", 
         login_window=FakeLoginWindow()
     )
