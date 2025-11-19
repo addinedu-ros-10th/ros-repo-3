@@ -1,2 +1,3 @@
 int64 cid
-int64 stid
+float32 posx
+float32 posy

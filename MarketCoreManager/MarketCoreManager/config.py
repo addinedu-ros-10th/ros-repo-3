@@ -1,10 +1,12 @@
 
-# OnGui Parameters
+
 MARKETCOREMANAGER_IP = "192.168.0.180"
 MARKETCOREMANAGER_ID = 1 
 
 INTERFACECOMMON = "<iii"
+
 #-----------------------------------------------
+# OnGui Parameters
 ONGUI_PORT = 3000
 ONGUI_ID = 17
 ONGUI_REQ1_ID = 1
