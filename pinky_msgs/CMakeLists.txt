@@ -15,7 +15,10 @@ find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/RobotState.msg"
-  "msg/StateControl.msg"
+  "msg/PoseOrder.msg"
+  "msg/Encoder.msg"
+  "msg/Humanpos.msg"
+  "msg/ItemReq.msg"
  )
 
 if(BUILD_TESTING)
