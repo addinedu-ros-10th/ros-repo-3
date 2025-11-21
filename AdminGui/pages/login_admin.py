@@ -34,11 +34,6 @@ class LoginAdminWindow(QWidget):
         form_layout.addRow("사용자 이름:", self.input_user)
         form_layout.addRow("비밀번호:", self.input_pw)
 
-        # self.btn_login = QPushButton("로그인", self)
-        # self.btn_login.move(530, 470)
-        # self.btn_login.resize(220, 50)
-        # self.btn_login.clicked.connect(self.login)
-
         self.btn_login_admin = QPushButton("Admin 로그인", self)
         self.btn_login_admin.move(530, 470)
         self.btn_login_admin.resize(220, 50)
@@ -47,50 +42,18 @@ class LoginAdminWindow(QWidget):
         main_layout.addLayout(form_layout)
         self.setLayout(main_layout)
 
-
-    # def make_update_packet(item_id, quantities, recv_flag):
     def make_update_packet(self, Transaction_ID, Length_of_data, function_id, username):
     
-        """
-        매장 물품 정보 업데이트 패킷 생성
-        item_id   : 물품 ID (uint16)
-        quantities: 물품 수량 16개 (uint8 리스트)
-        recv_flag : 0x00(포장), 0x01(배송)
-        """
-        # function_id = 0x01
-
-        # if len(quantities) != 16:
-        #     raise ValueError("QTY는 16개여야 합니다.")
-        # if not (0 <= item_id <= 0xFFFF):
-        #     raise ValueError("item_id는 0~65535 범위여야 합니다.")
-        # if recv_flag not in (0x00, 0x01):
-        #     raise ValueError("recv_flag는 0x00 또는 0x01만 가능.")
-
-        # 19바이트 패킷 구성
-        # packet = struct.pack("<B H 16B B",
-        #                     function_id,
-        #                     item_id,
-        #                     *quantities,
-        #                     recv_flag)
-        #     return packet
-
         
-        
-        # ✅ 1. b'\x01' 의 뜻
-
-        # 앞의 b 는 이 값이 바이트(byte) 타입이라는 의미
-        # \x01 은 16진수 01(hex 01) 을 뜻함
-        # 16진수 01 = 십진수 1
-
         SERVER_IP = "192.168.0.180"     # 서버 IP
-        SERVER_PORT = 3000          # 서버 포트
+        SERVER_PORT = 3001              # 서버 포트
 
 
         username = int(username)
         function_id = int(function_id)
         Length_of_data = int(Length_of_data)
 
-        packet = struct.pack("<i i i i",
+        packet = struct.pack("<iiii",
                             Transaction_ID,
                             Length_of_data,
                             function_id,
@@ -151,8 +114,10 @@ class LoginAdminWindow(QWidget):
 
         except Exception as e:
                     print("TCP 통신 오류:", e)
-                
+                    try: self.tcp_socket.close() 
+                    except: pass
                     return None
+                
 
 
     def admin_login(self):
@@ -168,30 +133,6 @@ class LoginAdminWindow(QWidget):
         # TCP 서버에 로그인 요청
         response = self.make_update_packet(Transaction_ID, Length_of_data, function_id, username)
         
-        # if response == b'\x01\x01':
-        #     # 로그인 성공
-        #     QMessageBox.information(self, "로그인 성공", f"{username}님 환영합니다!")
-
-        #     self.main_frame = PoseSubscriber(
-        #         manager=self.manager,         # ✅ manager 전달
-        #         # username=username, 
-        #         # photo_path=photo_path,
-        #         # login_window=self
-        #     )
-            
-        #     self.manager.show_page("PoseSubscriber")
-
-        #     self.input_pw.clear()
-        #     self.input_user.clear()
-
-
-        # elif response == "FAIL":
-        #     QMessageBox.warning(self, "로그인 실패", "등록되지 않은 사용자입니다.")
-        #     self.input_pw.clear()
-        # else:
-        #     QMessageBox.critical(self, "연결 실패", "서버 응답이 없거나 통신 오류가 발생했습니다.")
-
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
