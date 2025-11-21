@@ -44,22 +44,24 @@ class TCPSocket():
                     buffer = self.conn.recv(1024)
                     if len(buffer) > 0:
                         data += buffer
-                        if (data[-4:] == b"DONE"):
+                        if (b"DONE" in data):
                             if queue.full():
                                 queue.get_nowait()
-                            queue.put_nowait(data[:-4])
-                            data = b""
+                            queue_data, _, data = data.partition(b"DONE")
+                            queue.put_nowait(queue_data)
                             buffer = b""
                         else:
                             pass
                     else:
                         pass
+
                 except BrokenPipeError:
                     print("Pipe Broken")
                     self.connected = False
                 except Exception as e:
                     print(e)
                     self.connected = False
+                    self.conn.close()
             else:
                 pass
             time.sleep(0.1)
@@ -68,6 +70,24 @@ class TCPSocket():
         self.conn.send(data)
         self.conn.send(b"DONE")
     
+    def client_health_check(self):
+        while True:
+            if self.connected == True:
+                try:
+                    peeked_data = self.conn.recv(16, socket.MSG_PEEK)
+                    
+                    if len(peeked_data) == 0:
+                        print("Connection closed by client.")
+                        self.conn.close()
+                        self.connected = False
+                    else:
+                        pass
+                except Exception as e:
+                    self.connected = False
+                    print(e)
+            time.sleep(1)
+
+
     def __del__(self):
         self.tcp_socket.close()
         

@@ -10,6 +10,7 @@ class TCPSocket():
         self.connected = False
         self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.tcp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.data = b""
     
     def init_socket(self):
         while True:
@@ -37,29 +38,31 @@ class TCPSocket():
                 time.sleep(1)
 
     def recv_data(self, queue: queue.Queue):
-        data = b""
+        
         while True:
             if self.connected == True:
                 try:
                     buffer = self.conn.recv(1024)
                     if len(buffer) > 0:
-                        data += buffer
-                        if (data[-4:] == b"DONE"):
+                        self.data += buffer
+                        if (b"DONE" in self.data):
                             if queue.full():
                                 queue.get_nowait()
-                            queue.put_nowait(data[:-4])
-                            data = b""
+                            queue_data, _, self.data = self.data.partition(b"DONE")
+                            queue.put_nowait(queue_data)
                             buffer = b""
                         else:
                             pass
                     else:
                         pass
+
                 except BrokenPipeError:
                     print("Pipe Broken")
                     self.connected = False
                 except Exception as e:
                     print(e)
                     self.connected = False
+                    self.conn.close()
             else:
                 pass
             time.sleep(0.1)
@@ -68,6 +71,24 @@ class TCPSocket():
         self.conn.send(data)
         self.conn.send(b"DONE")
     
+    def client_health_check(self):
+        while True:
+            if self.connected == True:
+                try:
+                    peeked_data = self.conn.recv(16, socket.MSG_PEEK)
+                    
+                    if len(peeked_data) == 0:
+                        print("Connection closed by client.")
+                        self.conn.close()
+                        self.connected = False
+                        self.data = b""
+                    else:
+                        pass
+                except Exception as e:
+                    print(e)
+            time.sleep(1)
+
+
     def __del__(self):
         self.tcp_socket.close()
         

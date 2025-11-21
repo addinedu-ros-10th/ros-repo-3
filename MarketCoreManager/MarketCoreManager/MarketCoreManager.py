@@ -4,8 +4,7 @@ from geometry_msgs.msg import Twist
 import math
 from rcl_interfaces.msg import SetParametersResult
 from std_msgs.msg import Float64
-from pinky_msgs.msg import StateControl
-from pinky_msgs.msg import RobotState
+from pinky_msgs.msg import RobotState, PoseOrder, ItemReq
 
 from .tcp_socket import TCPSocket
 from .config import *
@@ -28,7 +27,7 @@ class MarketCoreManager(Node):
             password = AWSPASSWORD,
             database = AWSDATABASE
         )
-        self.cursor = self.dbms.cursor()
+        self.cursor = self.dbms.cursor(buffered=True)
 
         self.ongui_recv_queue = queue.Queue(maxsize=1)
         self.admingui_recv_queue = queue.Queue(maxsize=1)
@@ -52,22 +51,44 @@ class MarketCoreManager(Node):
         
         self.robot_status_subscriber = self.create_subscription(
             RobotState,
-            '/pinky31/robot_state',
+            'robot_state',
             self.pinky31_callback,
             10
         )
         self.robot_status_subscriber = self.create_subscription(
             RobotState,
-            '/pinky32/robot_state',
+            'pinky32/robot_state',
             self.pinky32_callback,
             10
         )
-        self.robot_state_control_publisher = self.create_publisher(
-            StateControl,
-            '/state_control',
+        self.robot_position_order_publisher = self.create_publisher(
+            PoseOrder,
+            'pose_order',
             10
         )
         
+        self.item_req_subscriber = self.create_subscription(
+            ItemReq,
+            'item_req',
+            self.item_req_callback,
+            10
+        )
+
+
+        self.user_check_req_subscriber = self.create_subscription(
+            ItemReq,
+            'user_check',
+            self.user_check_req_callback,
+            10
+        )
+
+        self.user_check_resp_publisher = self.create_publisher(
+            ItemReq,
+            'user_resp',
+            10
+        )
+
+
         self.robot_status_timer = self.create_timer(self.robot_status_period, self.robot_status_callback)
         self.task_checker = self.create_timer(self.task_checker_period, self.task_checker_callback)
         self.robot_command_timer = self.create_timer(self.robot_command_period, self.robot_command_callback)
@@ -78,12 +99,52 @@ class MarketCoreManager(Node):
 
         self.get_logger().info(f"INIT COMPLETE")
 
+    def user_check_req_callback(self, msg):   
+        sql = "SELECT id FROM user_info"
+        self.cursor.execute(sql)
+        result = self.cursor.fetchall()
+        data = False
+        for i in result:
+            if (i[0] == msg.item):
+                data = True
+                break
+        
+        pub_msg = ItemReq
+        pub_msg.cid = msg.cid
+        if (data):
+            pub_msg.item = 1
+        else:
+            pub_msg.item = 0
+        self.user_check_resp_publisher.publish(pub_msg)
+
+    def item_req_callback(self, msg):
+        item_id = msg.item
+        
+        pub_msg = PoseOrder()
+
+        sql = "SELECT location.coordinate_x, location.coordinate_y, location.coordinate_theta " \
+        "FROM location, item_list " \
+        f"WHERE item_list.iid = {item_id} " \
+        "AND item_list.location_id = location.id"
+        self.cursor.execute(sql)
+        data = self.cursor.fetchall()
+        print(data)
+        if (len(data) > 0):
+            pub_msg.cid = msg.cid
+            pub_msg.posx = data[0][0]
+            pub_msg.posy = data[0][1]
+            pub_msg.theta = data[0][2]
+            self.robot_position_order_publisher.publish(pub_msg)
+        else:
+            pass
+
     def robot_command_callback(self):
         sql = "SELECT * FROM "
 
     def robot_status_callback(self):
         if (not self.robot_status_queue.empty()):
-            self.admingui_socket.send_data(self.robot_status_queue.get_nowait())
+            if self.admingui_socket.connected == True:
+                self.admingui_socket.send_data(self.robot_status_queue.get_nowait())
 
     def task_checker_callback(self):
         sql = "SELECT * FROM order_list"
@@ -100,6 +161,7 @@ class MarketCoreManager(Node):
         sql = "SELECT * FROM robot_state"
         self.cursor.execute(sql)
         result = self.cursor.fetchall()
+        robot_id = -1
         for i in result:
             if (i[1] == 2):
                 if (i[0] == 0):
@@ -111,9 +173,9 @@ class MarketCoreManager(Node):
                     robot_id = i[0]
                     break
                 else:
-                    robot_id = -1
+                    self.get_logger().info(f"CART ID IS NOT VERIFIED!")  
             else:
-                robot_id = -1
+                pass
 
         if (not (robot_id < 0)): 
             sql = f"INSERT task (order_id, task_status_id, robot_id) VALUES {order_id}, {1}, {robot_id}"
@@ -122,7 +184,9 @@ class MarketCoreManager(Node):
 
             sql = f"UPDATE order_list SET order_status_id = 1 WHERE order_id = {order_id}"
             self.cursor.execute(sql)
-            self.dbms.commit()        
+            self.dbms.commit()
+        else:
+            self.get_logger().info(f"NONE OF CART IS IDLE!")      
 
     def ongui_socket_start(self) -> None:
         self.ongui_socket.init_socket()
@@ -136,6 +200,10 @@ class MarketCoreManager(Node):
         ongui_callback_thread = threading.Thread(target=self.ongui_recv_callback, daemon=True)
         self.thread_list.append(ongui_callback_thread)
 
+        health_callback_thread= threading.Thread(target=self.ongui_socket.client_health_check, daemon=True)
+        self.thread_list.append(health_callback_thread)
+
+
     def admingui_socket_start(self) -> None:
         self.admingui_socket.init_socket()
 
@@ -148,10 +216,14 @@ class MarketCoreManager(Node):
         admin_callback_thread = threading.Thread(target=self.admingui_recv_callback, daemon=True)
         self.thread_list.append(admin_callback_thread)
 
+        health_callback_thread= threading.Thread(target=self.admingui_socket.client_health_check, daemon=True)
+        self.thread_list.append(health_callback_thread)
+
     def ongui_recv_callback(self):
         while True:
             if self.ongui_recv_queue.full():
                 data = self.ongui_recv_queue.get_nowait()
+                #!@
                 print(data)
                 self.ongui_data_check(data)
             else:
@@ -189,10 +261,10 @@ class MarketCoreManager(Node):
             self.ongui_socket.send_data(send_data)
 
         elif (struct.unpack("<i",data[8:12])[0] == ONGUI_REQ2_ID):
-            item_list = struct.unpack(ONGUI_REQ2, data[12:])
+            item_list = list(struct.unpack(ONGUI_REQ2, data[12:]))
 
-            sql = "INSERT INTO order list (user_id, order_status_id, item_id) VALUES (%s, %s, %s)"
-            self.cursor.execute(sql, self.user_id, 0, item_list)
+            sql = "INSERT INTO order_list (user_id, order_status_id, order_item) VALUES (%s, %s, %s)"
+            self.cursor.execute(sql, (self.user_id, 0, str(item_list[1:-1])))
             self.dbms.commit()
 
             send_data = struct.pack(INTERFACECOMMON+ONGUI_RECV3, ONGUI_ID,  1, ONGUI_RECV3_ID, True)
@@ -200,7 +272,7 @@ class MarketCoreManager(Node):
 
         else:
             self.get_logger().info(f"WRONG DATA FUNCTION CODE FROM ONGUI")
-         
+        
     def admingui_recv_callback(self):
         while True:
             if self.admingui_recv_queue.full():
@@ -266,7 +338,31 @@ class MarketCoreManager(Node):
         posy = msg.posy
 
         send_data = struct.pack(INTERFACECOMMON+ADMINGUI_RECV3, ADMINGUI_ID, 32, ADMINGUI_RECV3_ID, *[cart_id, user_id, state_id, battery, posx, posy])
+        if self.robot_status_queue.full():
+            self.robot_status_queue.get_nowait()
         self.robot_status_queue.put_nowait(send_data)
+        
+        sql = f"SELECT robot_id FROM robot_state WHERE robot_id = {cart_id}"
+        self.cursor.execute(sql)
+        data = self.cursor.fetchall()
+
+        if (len(data) > 0):
+                sql = "UPDATE robot_state SET " \
+                "robot_status_id = %s, " \
+                "battery_state_id = %s, " \
+                "error_status_id = 0, " \
+                "connection_state_id = 1, " \
+                "coordinate_x = %s, " \
+                "coordinate_y = %s " \
+                "WHERE robot_id = %s"
+
+                self.cursor.execute(sql, (user_id, battery, posx, posy, cart_id))
+                self.dbms.commit()
+        else:
+            sql = "INSERT INTO robot_state (robot_id, robot_status_id, battery_state_id, error_status_id, connection_state_id, coordinate_x, coordinate_y)" \
+            " VALUES (%s, %s, %s, 0, 1, %s, %s)"
+            self.cursor.execute(sql, (cart_id, state_id, battery, posx, posy))
+            self.dbms.commit()
 
     def pinky32_callback(self, msg):
         cart_id = msg.cid

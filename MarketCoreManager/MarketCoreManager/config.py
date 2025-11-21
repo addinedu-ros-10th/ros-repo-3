@@ -49,6 +49,6 @@ ADMINGUI_RECV1 = "?"
 # MARKET ITEM LIST
 ADMINGUI_RECV2 = "i"+"i"*16
 # CART STATUS
-ADMINGUI_RECV3 = "iiifiiff"
+ADMINGUI_RECV3 = "iiifff"
 
 #-----------------------------------------------

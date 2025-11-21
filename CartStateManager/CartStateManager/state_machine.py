@@ -29,11 +29,7 @@ class StateMachine:
         # If the event exists → use it
         if event in transitions:
             next_id = transitions[event]
-
-        # Otherwise use DEFAULT if defined
-        elif "DEFAULT" in transitions:
-            next_id = transitions["DEFAULT"]
-
+            
         else:
             raise Exception(
                 f"[ERROR] No transition for event '{event}' in state {self.current_state.name}"
