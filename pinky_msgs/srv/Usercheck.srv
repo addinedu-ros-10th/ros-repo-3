@@ -1,0 +1,4 @@
+int32 cid
+int32 user_id
+---
+bool user_check_result

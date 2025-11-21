@@ -1,11 +1,12 @@
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist, Pose2D
-from std_msgs.msg import Int32, Float32
+from std_msgs.msg import String, Float32
 from nav_msgs.msg import Odometry
 from rcl_interfaces.msg import SetParametersResult
 from std_msgs.msg import Float64
 from pinky_msgs.msg import RobotState, PoseOrder, Humanpos, ItemReq
+from pinky_msgs.srv import Usercheck
 
 from .tcp_socket import TCPSocket
 from .config import *
@@ -66,17 +67,9 @@ class CartStateManager(Node):
             10
         )
 
-        self.user_check_req_publisher = self.create_publisher(
-            ItemReq,
-            'user_check',
-            10
-        )
-
-        self.user_check_resp_subscriber = self.create_subscription(
-            ItemReq,
-            'user_resp',
-            self.user_check_resp_callback,
-            10
+        self.user_check_client = self.create_client(
+            Usercheck,
+            'user_check'
         )
 
         self.battery_status_subscriber = self.create_subscription(
@@ -100,10 +93,10 @@ class CartStateManager(Node):
             10
         )
 
-        self.task_subscriber = self.create_subscription(
-            Int32,
-            'task_state',
-            self.task_callback,
+        self.state_event_subscriber = self.create_subscription(
+            String,
+            'state_event',
+            self.state_event_callback,
             10
         )
 
@@ -113,7 +106,7 @@ class CartStateManager(Node):
         self.interface_manager_sending_timer = self.create_timer(self.state_code_timer, self.interface_manager_sending)
         self.robot_status_sending_timer = self.create_timer(self.robot_status_timer, self.robot_status_sending)
 
-    def user_check_resp_callback(self, msg : ItemReq):
+    def user_check_client_callback(self, msg : ItemReq):
         if msg.cid != self.robot_id:
             return
         else:
@@ -123,10 +116,9 @@ class CartStateManager(Node):
                 self.user_id = -1
                 self.get_logger().error("USER ID NOT IN ID")            
 
-    def task_callback(self, msg : Int32):
-        task_status = msg.data
-        if (task_status == 1):
-            self.state_machine.recv_event("DEFAULT")
+    def state_event_callback(self, msg : String):
+        state_event = msg.data
+        self.state_machine.recv_event("DEFAULT")
 
     def position_order_callback(self, msg : PoseOrder):
         
@@ -254,7 +246,20 @@ class CartStateManager(Node):
             return
         
         if (struct.unpack("<i",data[8:12])[0] == INTERFACEMANAGER_FUNCTION1_ID):
-            self.user_id = struct.unpack(INTERFACEMANAGER_FUNCTION_1, data[12:])[0]
+            user_id = struct.unpack(INTERFACEMANAGER_FUNCTION_1, data[12:])[0]
+
+            self.user_check_client.wait_for_service()
+
+            req = Usercheck.Request()
+            req.req.cid = self.robot_id
+            req.req.user_id = user_id
+            response = self.user_check_client.call_async(req)
+            rclpy.spin_until_future_complete(self, response)
+
+            if (response.result()):
+                self.user_id = user_id
+            else:
+                self.user_id = -1
 
             send_data = struct.pack(INTERFACECOMMON+CARTSTATEMANAGER_FUNCTION_1, 
                                     INTERFACEMANAGER_ID, 1, CARTSTATEMANAGER_FUNCTION1_ID, True)

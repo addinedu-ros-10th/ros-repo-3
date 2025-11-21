@@ -115,8 +115,8 @@ class SensorManager(Node):
     def imu_sensor_callback(self):
         t = Imu()
         raw_data = self.Imu.read_imu_data()
-
-        t.header.stamp = self.get_clock.now()
+        
+        t.header.stamp = self.get_clock().now().to_msg()
         t.header.frame_id = IMU_FRAMEID
         t.orientation.w = raw_data['quaternion'][0]
         t.orientation.x = raw_data['quaternion'][1]
@@ -140,4 +140,25 @@ class SensorManager(Node):
         pct_msg = Float32()
         pct_msg.data = float(self.battery.battery_percentage())
         self.percentage_publisher.publish(pct_msg)
+
+    def __del__(self):
+        self.Imu.close()
+        self.battery.close()
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = SensorManager()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        node.get_logger().info("Node interrupted")
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
+
+        
 

@@ -1,4 +1,10 @@
-[submodule "SubmoduleTestRepo"]
+[submodule "robot_localization"]
     path = robot_localization
     url = https://github.com/cra-ros-pkg/robot_localization.git
     branch = jazzy-devel
+
+
+[submodule "domain_bridge"]
+    path = domain_bridge
+    url = https://github.com/ros2/domain_bridge.git
+    branch = main

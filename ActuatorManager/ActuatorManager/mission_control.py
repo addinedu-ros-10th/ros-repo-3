@@ -9,6 +9,7 @@ from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped, Twist
 from std_msgs.msg import String
 from collections import deque
 
+from .waypoint_dict import *
 
 class MissionControlNode(Node):
 
@@ -37,101 +38,6 @@ class MissionControlNode(Node):
 
         # add 이후 첫 shelf 에서만 10cm 추가 전진하기 위한 플래그
         self.post_add_shelf_forward = False
-
-        # --- 1. 21개 웨이포인트 좌표 (x, y만 사용, 2025-11-19 실측값) ---
-        self.waypoints = {
-            "1":  [2.14,  0.05],
-            "2":  [2.30, -0.48],
-            "3":  [2.27, -0.94],
-            "4":  [2.26, -1.54],
-            "5":  [2.06, -1.56],
-            "6":  [1.70,  0.02],
-            "7":  [1.65, -0.44],
-            "8":  [1.65, -0.90],
-            "9":  [1.62, -1.57],
-            "10": [1.33, -1.57],
-            "11": [0.96,  0.01],
-            "12": [0.93, -0.52],
-            "13": [0.90, -0.97],
-            "14": [1.04, -1.57],
-            "15": [0.61, -1.56],
-            "16": [0.28,  0.01],
-            "17": [0.31, -0.47],
-            "18": [0.30, -0.82],
-            "19": [0.32, -1.55],
-            "20": [0.00,  0.00],
-            "21": [-0.21, -1.57],
-        }
-
-        # --- 1-2. 진열대 번호 -> 서야 하는 waypoint 번호 ---
-        self.shelf_to_wp = {
-            "1":  "1",
-            "2":  "3",
-            "3":  "4",
-            "4":  "2",
-            "5":  "3",
-            "6":  "7",
-            "7":  "8",
-            "8":  "5",
-            "9":  "7",
-            "10": "8",
-            "11": "12",
-            "12": "13",
-            "13": "10",
-            "14": "12",
-            "15": "13",
-            "16": "17",
-            "17": "18",
-            "18": "15",
-        }
-
-        # --- 3. shelf 진열대 최종 바라보는 각도 (rad) ---
-        # 키는 "진열대 번호"
-        self.shelf_facing_theta = {
-            "1":  0.0,
-            "2":  0.0,
-            "3":  0.0,
-            "4": -3.14,
-            "5": -3.14,
-            "6":  0.0,
-            "7":  0.0,
-            "8": -1.57,
-            "9": -3.14,
-            "10": -3.14,
-            "11": 0.0,
-            "12": 0.0,
-            "13": -1.57,
-            "14": -3.14,
-            "15": -3.14,
-            "16": 0.0,
-            "17": 0.0,
-            "18": -1.57,
-        }
-
-        # --- 2. 웨이포인트 연결 그래프 (BFS용) ---
-        self.waypoint_graph = {
-            "1":  ["2", "6"],
-            "2":  ["1", "3"],
-            "3":  ["2", "4"],
-            "4":  ["3", "5"],
-            "5":  ["4", "9"],
-            "6":  ["1", "7", "11"],
-            "7":  ["6", "8"],
-            "8":  ["7", "9"],
-            "9":  ["8", "5", "10"],
-            "10": ["9", "14"],
-            "11": ["6", "12", "16"],
-            "12": ["11", "13"],
-            "13": ["12", "14"],
-            "14": ["13", "10", "15"],
-            "15": ["14", "19"],
-            "16": ["11", "17", "20"],
-            "17": ["16", "18"],
-            "18": ["17", "19"],
-            "19": ["18", "15", "21"],
-            "20": ["16", "21"],
-            "21": ["20", "19"],
-        }
 
         # --- 4. Nav2 액션 클라이언트 (2개) ---
         self._action_single_goal_client = ActionClient(
@@ -181,9 +87,9 @@ class MissionControlNode(Node):
 
     def _xy_from_wp(self, wp_id):
         """waypoints 항목에서 x,y만 안전하게 추출"""
-        if wp_id not in self.waypoints:
+        if wp_id not in WAYPOINTS:
             return None, None
-        data = self.waypoints[wp_id]
+        data = WAYPOINTS[wp_id]
         if len(data) >= 2:
             return float(data[0]), float(data[1])
         return None, None
@@ -199,7 +105,7 @@ class MissionControlNode(Node):
 
         min_dist = float('inf')
         nearest_wp = None
-        for wp_id in self.waypoints.keys():
+        for wp_id in WAYPOINTS.keys():
             wp_x, wp_y = self._xy_from_wp(wp_id)
             if wp_x is None:
                 continue
@@ -217,7 +123,7 @@ class MissionControlNode(Node):
 
     def find_shortest_path(self, start, end, blocked_nodes=None):
         """BFS로 waypoint_graph 기반 최단 경로 찾기 (blocked_nodes 제외)"""
-        if start not in self.waypoint_graph or end not in self.waypoint_graph:
+        if start not in WAYPOINT_GRAPH or end not in WAYPOINT_GRAPH:
             return None
 
         blocked = set(blocked_nodes) if blocked_nodes else set()
@@ -236,7 +142,7 @@ class MissionControlNode(Node):
             if node == end:
                 return path
 
-            for neighbor in self.waypoint_graph[node]:
+            for neighbor in WAYPOINT_GRAPH[node]:
                 if neighbor not in visited and neighbor not in blocked:
                     new_path = list(path)
                     new_path.append(neighbor)
@@ -250,7 +156,7 @@ class MissionControlNode(Node):
             return None
         if self.current_goal_target is None:
             return None
-        if self.current_goal_target not in self.waypoints:
+        if self.current_goal_target not in WAYPOINTS:
             return None
 
         gx, gy = self._xy_from_wp(self.current_goal_target)
@@ -372,7 +278,7 @@ class MissionControlNode(Node):
                 self.current_state = "IDLE"
 
         # 4-2) 단일 waypoint 번호 (예: "10")
-        elif command in self.waypoints:
+        elif command in WAYPOINTS:
             start = self.find_nearest_waypoint()
             if start is None:
                 self.current_state = "IDLE"
@@ -425,7 +331,7 @@ class MissionControlNode(Node):
             return
 
         # 진열대 번호 1~18만 허용
-        if shelf_id not in self.shelf_to_wp:
+        if shelf_id not in SHELF_TO_WP:
             self.get_logger().warn(
                 f"{shelf_id}번은 정의된 진열대가 아닙니다 (1~18만 허용)."
             )
@@ -443,7 +349,7 @@ class MissionControlNode(Node):
             # 한 번 사용했으니 플래그 해제
             self.post_add_shelf_forward = False
 
-        target_wp = self.shelf_to_wp[shelf_id]
+        target_wp = SHELF_TO_WP[shelf_id]
 
         start = self.find_nearest_waypoint()
         if start is None:
@@ -669,7 +575,7 @@ class MissionControlNode(Node):
 
             # 마지막 포즈는 shelf_facing_theta로 override
             if i == len(path_ids) - 1:
-                theta = self.shelf_facing_theta.get(str(shelf_id), 0.0)
+                theta = SHELF_FACING_THETA.get(str(shelf_id), 0.0)
 
             goal_msg.poses.append(self.create_pose_stamped(x, y, theta_rad=theta))
 

@@ -31,12 +31,13 @@ class IMU:
             self.bus = smbus2.SMBus(i2c_bus)
         except FileNotFoundError:
             raise RuntimeError(f"I2C 버스 {i2c_bus}를 찾을 수 없습니다. I2C가 활성화되었는지 확인하세요.")
-
+        time.sleep(1)
         chip_id = self.bus.read_byte_data(self.BNO055_ADDRESS, self.BNO055_CHIP_ID_ADDR)
         if chip_id != 0xA0:
             raise RuntimeError("BNO055 센서가 감지되지 않았습니다. 연결을 확인하세요.")
 
         # 1. 시스템 리셋
+        print("리셋 시작.")
         self.bus.write_byte_data(self.BNO055_ADDRESS, self.BNO055_SYS_TRIGGER_ADDR, 0x20)
         
         # 리셋이 완료될 때까지 대기 (Bootloader Status == 0)

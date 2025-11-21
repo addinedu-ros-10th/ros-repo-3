@@ -1,0 +1,52 @@
+name: multi_robot_bridge
+from_domain: 0
+to_domain: 31  # default, but we will override per bridge item
+topics:
+  robot_state:
+    type: pinky_msgs/msg/RobotState
+    from_domain: 31
+    to_domain: 0
+
+  robot_state:
+    topic: pinky32/robot_state
+    type: pinky_msgs/msg/RobotState
+    from_domain: 32
+    to_domain: 0
+
+  # ------------------------------
+  # item request (from robots → server)
+  # ------------------------------
+  item_req:
+    type: pinky_msgs/msg/ItemReq
+    from_domain: 31
+    to_domain: 0
+  item_req:
+    type: pinky_msgs/msg/ItemReq
+    from_domain: 32
+    to_domain: 0
+
+  # ------------------------------
+  # pose_order (from server → robots)
+  # ------------------------------
+  pose_order:
+    type: pinky_msgs/msg/PoseOrder
+    from_domain: 0
+    to_domain: 31
+  pose_order:
+    type: pinky_msgs/msg/PoseOrder
+    from_domain: 0
+    to_domain: 32
+
+services:
+  # ------------------------------
+  # user_check service (bidirectional)
+  # ------------------------------
+  user_check:
+    type: pinky_msgs/srv/Usercheck
+    from_domain: 31
+    to_domain: 0
+    
+  user_check:
+    type: pinky_msgs/srv/Usercheck
+    from_domain: 32
+    to_domain: 0

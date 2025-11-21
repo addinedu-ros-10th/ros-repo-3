@@ -19,6 +19,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Encoder.msg"
   "msg/Humanpos.msg"
   "msg/ItemReq.msg"
+  "srv/Usercheck.srv"
+  DEPENDENCIES std_msgs
  )
 
 if(BUILD_TESTING)
