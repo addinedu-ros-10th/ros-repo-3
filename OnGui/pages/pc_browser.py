@@ -2,8 +2,10 @@
 
 import os
 import sys
-from PyQt6.QtWidgets import QSizePolicy,QTableWidget, QApplication, QMainWindow, QLabel, QLineEdit, QPushButton, QMessageBox, QWidget, QVBoxLayout, QFormLayout
-from PyQt6.QtCore import Qt
+import struct
+from PyQt6.QtWidgets import QSizePolicy,QTableWidget, QApplication, QMainWindow, QLabel, QLineEdit, QPushButton, QMessageBox, QWidget, QVBoxLayout, QFormLayout, QTableWidgetItem
+from PyQt6.QtCore import Qt, QEvent
+
 
 
 # 상위 폴더 경로 추가
@@ -21,11 +23,38 @@ except ImportError:
 # ✅ QMainWindow 대신 QWidget을 상속받습니다.
 class PC_BrowserClass(QMainWindow): 
 
+    def parse_product_response(self, data: bytes):
+        """
+        서버가 보내온 상품 정보 응답 파싱
+        ID 16개 + QTY 16개 구조로 구성됨
+        """
+        # 예: DONE(4) + ID16개 + QTY16개 + DONE(4)
+        # 단순화를 위해 숫자 데이터만 추출
+
+        # 4바이트 'DONE' 제거
+        data = data[4:]  # 앞 'DONE' 제거
+        data = data[:-4] # 뒤 'DONE' 제거
+
+        # 남은 데이터는 32개의 int32 구성
+        count = len(data) // 4
+        nums = struct.unpack("<" + "i" * count, data)
+
+        ids = nums[:16]
+        qtys = nums[16:32]
+
+        return ids, qtys
+
+
     def __init__(self, manager=None):
         super().__init__()
         self.manager = manager
         self.main_frame = None
         self.initUI()
+
+        # 로그인 단계에서 받아온 상품 데이터를 자동 로딩
+        if hasattr(self.manager, "shared_product_data"):
+            self.load_product_table(self.manager.shared_product_data)
+
 
     def initUI(self):
 
@@ -47,7 +76,7 @@ class PC_BrowserClass(QMainWindow):
         self.name_label.setFont(font)
         
         # ❗ 1번 수치로 위치와 크기 지정
-        self.name_label.move(300, 50)      
+        self.name_label.move(300, 45)      
         self.name_label.resize(360, 40)  
 
         # --- 2. 상품명 입력 창 ---
@@ -57,8 +86,8 @@ class PC_BrowserClass(QMainWindow):
         # self.input_product.setEchoMode(QLineEdit.EchoMode.Password)
 
         # ❗ 2. 수치로 위치와 크기 지정
-        self.input_product.move(300, 100)      
-        self.input_product.resize(360, 40)   
+        self.input_product.move(220, 460)      
+        self.input_product.resize(450, 40)   
         
 
         # 3. 상품명 저장 버튼
@@ -66,14 +95,14 @@ class PC_BrowserClass(QMainWindow):
         self.product_save_btn_.clicked.connect(self.on_add_button_clicked)
 
         # ❗ 3. 상품명 저장 버튼 수치로 위치와 크기 지정
-        self.product_save_btn_.move(300, 150)      
-        self.product_save_btn_.resize(360, 40)  
+        self.product_save_btn_.move(220, 510)      
+        self.product_save_btn_.resize(450, 40)  
 
         # ✅ QTableWidget 생성
         self.product_info = QTableWidget()
         self.product_info.setRowCount(0)  # 초기 행 개수
         self.product_info.setColumnCount(3)  # 3개의 컬럼 생성
-        self.product_info.setHorizontalHeaderLabels(["Iid", "QTY", "RECV"])  # 헤더 이름 설정
+        self.product_info.setHorizontalHeaderLabels(["Name", "QTY", "RECV"])  # 헤더 이름 설정
 
         # ✅ 테이블 크기 조정
         self.product_info.resizeColumnsToContents()
@@ -104,7 +133,7 @@ class PC_BrowserClass(QMainWindow):
         # 또는 여백(Margin, Spacing)**을 조절해야 합니다.
 
         self.product_info.setMinimumSize(130, 130)  # 최소 크기 지정
-        self.product_info.setMaximumSize(450, 300)  # 최대 크기 제한
+        self.product_info.setMaximumSize(450, 500)  # 최대 크기 제한
         self.product_info.setSizePolicy(
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Expanding
@@ -116,11 +145,20 @@ class PC_BrowserClass(QMainWindow):
         # main_layout.addWidget(self.product_info, alignment=Qt.AlignmentFlag.AlignBottom) # 하단
 
         # 왼쪽, 위, 오른쪽, 아래 여백(px)
-        main_layout.setContentsMargins(220, 200, 380, 200)  
+        main_layout.setContentsMargins(220, 100, 380, 270)  
         main_layout.setSpacing(20)  # 위젯 간 간격
 
 
         #========================================================== 
+
+
+        # back_button 
+        self.back_button = QPushButton("뒤로가기", self)
+        self.back_button.clicked.connect(self.backMove)
+
+        # ❗ back_button > 수치로 위치와 크기 지정
+        self.back_button.move(30, 50)   # X=150, Y=220
+        self.back_button.resize(150, 40)
 
          # --- 4. 구매희망 리스트 라벨 ---
         self.name_label1 = QLabel("구매희망 쇼핑리스트.!", central_widget) 
@@ -129,7 +167,7 @@ class PC_BrowserClass(QMainWindow):
         self.name_label1.setFont(font)
 
         # ❗ 4. 구매희망 리스트 라벨 수치로 위치와 크기 지정
-        self.name_label1.move(700, 40)      
+        self.name_label1.move(800, 40)      
         self.name_label1.resize(360, 50) 
 
 
@@ -160,20 +198,20 @@ class PC_BrowserClass(QMainWindow):
         
         # 7. 구매희망 리스트 작성 저장 버튼
         self.product_save_btn = QPushButton("구매희망 리스트 저장", self)
-        # self.product_save_btn.clicked.connect(self.product_list_create)
+        self.product_save_btn.clicked.connect(self.send_wishlist_to_server)
 
         # ❗ 7. 구매희망 리스트 작성 저장 수치로 위치와 크기 지정
         self.product_save_btn.move(700, 510)      
         self.product_save_btn.resize(360, 40) 
 
  
-        # 8. 구매희망 쇼핑 리스트 이동 버튼
-        self.product_move_btn = QPushButton("쇼핑리스트 보러가기", self)
-        self.product_move_btn.clicked.connect(self.AutoShoppingClass)
+        # # 8. 구매희망 쇼핑 리스트 이동 버튼
+        # self.product_move_btn = QPushButton("쇼핑리스트 보러가기", self)
+        # self.product_move_btn.clicked.connect(self.AutoShoppingClass)
 
-        # ❗ 8. 구매희망 쇼핑 리스트 이동 수치로 위치와 크기 지정
-        self.product_move_btn.move(700, 560)      
-        self.product_move_btn.resize(360, 40)   
+        # # ❗ 8. 구매희망 쇼핑 리스트 이동 수치로 위치와 크기 지정
+        # self.product_move_btn.move(700, 560)      
+        # self.product_move_btn.resize(360, 40)   
 
 
         # ✅ QWidget은 setLayout을 바로 사용합니다.
@@ -188,6 +226,9 @@ class PC_BrowserClass(QMainWindow):
         
     def AutoShoppingClass(self):
         self.manager.show_page("AutoShoppingClass")
+
+    def backMove(self):
+        self.manager.show_page("Sttclass")
         
 
     # ✅ 버튼 클릭 시 실행되는 함수
@@ -217,6 +258,180 @@ class PC_BrowserClass(QMainWindow):
         # 라벨에 최종 텍스트 적용
         updated_text = "\n".join(numbered_lines)
         self.product_label.setText(updated_text)
+
+    # ✅ 3. showEvent 함수 추가
+    def showEvent(self, event: QEvent):
+        """
+        이 창이 화면에 나타날 때마다 Qt에 의해 자동으로 호출됩니다.
+        """
+        print("Sttclass 창이 보입니다. 데이터를 로드합니다.")
+        
+        # 매니저에 공유 데이터가 있는지 확인
+        if hasattr(self.manager, "shared_product_data") and self.manager.shared_product_data:
+            # 데이터가 있다면 테이블 로드 함수 호출
+            self.load_product_table(self.manager.shared_product_data)
+        else:
+            # 데이터가 없으면 테이블을 비웁니다 (선택 사항)
+            self.product_info.setRowCount(0) 
+            print("아직 공유된 상품 데이터가 없습니다.")
+            
+        # 부모의 showEvent를 호출해줘야 합니다.
+        super().showEvent(event)
+
+ 
+
+    def load_product_table(self, raw_data: bytes):
+        """
+        login_tcp_req.py → manager.shared_product_data 로 전달된 상품정보를
+        QTableWidget 에 표시하는 함수
+        """
+
+        # 1) 앞뒤 DONE 제거
+        data = raw_data[20:-4]
+
+        # 2. 4바이트씩 나누어 숫자로 변환
+        numbers = []
+        for i in range(0, len(data), 4):
+            value = struct.unpack('<I', data[i:i+4])[0]
+            numbers.append(value)
+
+        # 3. 결과 출력
+        print(numbers)
+
+        # 2) int32 32개 파싱 (ID 16개 + QTY 16개)
+        total_count = len(data) // 4
+        values = struct.unpack("<" + "i" * total_count, data)
+
+        # 3) 받은 데이터의 절반을 ID/QTY 개수로 계산
+        #    (total_count가 20이면, num_items는 10이 됨)
+        num_items = total_count 
+        
+
+        # ids = values[:num_items]   # 0번부터 9번까지 (10개)
+        # qtys = values[num_items:]  # 10번부터 19번까지 (10개)
+        qtys = values  # 10번부터 19번까지 (10개)
+
+        # (1) Name 16개 고정 리스트
+        fixed_names = [
+            "soju", "beer", "ketchap", "mayonaise",
+            "Snack_Org", "Snack_Ylw", "sushi", "pizza",
+            "frypan", "pot", "strawberry", "watermelon",
+            "grape", "deco_tree", "deco_santa", "deco_ring"
+        ]
+
+
+        # 3) GUI 테이블 초기화 (16줄이 아닌, 받은 만큼만)
+        self.product_info.setRowCount(num_items)
+
+        # 16번이 아닌, 받은 개수(num_items)만큼만 반복
+        for i in range(num_items):
+            # id_item = QTableWidgetItem(str(ids[i]))
+            
+             # Name 컬럼
+            name_item = QTableWidgetItem(fixed_names[i])
+            qty_item = QTableWidgetItem(str(qtys[i]))
+            recv_item = QTableWidgetItem("OK")              # RECV 임의값 저장
+                    
+            self.product_info.setItem(i, 0, name_item)
+            self.product_info.setItem(i, 1, qty_item)
+            self.product_info.setItem(i, 2, recv_item)
+
+
+    def send_wishlist_to_server(self):
+        """
+        구매희망 리스트(화면 오른쪽 product_label)를 읽어서
+        서버로 4바이트 int 들을 바이너리로 변환해 전송하는 함수
+        ※ ID는 보내지 않고, QTY(=사용자가 입력한 순번별 수량)만 전송
+        """
+
+        # 1) 구매리스트에서 줄 단위 텍스트 가져오기
+        raw_text = self.product_label.text().strip()
+
+        if not raw_text:
+            QMessageBox.warning(self, "오류", "저장할 구매 희망 리스트가 없습니다!")
+            return
+
+        # 2) "1. 사과" → "사과" 형태로 변환
+        qty_list = []
+               
+
+        for line in raw_text.split("\n"):
+            # 번호 제거 → "1. 라면" → "라면"
+            if ". " in line:
+                line = line.split(". ", 1)[1]
+
+            qty_list.append(1)
+
+        # 3) 16개로 고정, 부족하면 0으로 패딩
+        # while len(qty_list) < 16:
+        #     qty_list.append(0)
+
+        # 3) int 리스트를 4바이트 little-endian 바이너리로 변환
+        # 예) [1,1,1] → b'\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00'
+
+        # struct.pack의 포맷 문자열 생성:
+        Transaction_ID = 1 
+        Function_ID = 2    
+        username = 1
+        Length_of_data = 69
+        
+        Transaction_ID = int(Transaction_ID)
+        username = int(username)
+        Function_ID = int(Function_ID)
+        Length_of_data = int(Length_of_data)
+        recv = True
+
+        # 4개의 i (Header) + 16개의 i (QTY 배열)
+        # binary_data = struct.pack("<" + "i" * len(qty_list), *qty_list)
+        format_string = "<iiii" + "i" * 16 + "?" # bool 타입은 ?로 표기 
+
+        # 패킷 데이터: Header 값 4개와 QTY 배열의 
+        # packet = struct.pack(
+        #     format_string,
+        #     Transaction_ID,
+        #     Length_of_data,
+        #     Function_ID,
+        #     username,
+        #     *qty_list,
+        #     recv   
+        # )
+        packet = struct.pack(
+            format_string,
+            Transaction_ID,
+            Length_of_data,
+            Function_ID,
+            username,
+            *[i for i in range(16)],   
+            recv                        
+        )
+
+        # ⭐⭐ 핵심 수정: manager의 공유 소켓 사용 확인
+        if not hasattr(self.manager, 'active_tcp_socket') or self.manager.active_tcp_socket is None:
+            return False, "로그인 소켓 연결을 찾을 수 없습니다."
+
+        try:
+            # ⭐ 공유된 소켓 객체를 가져와서 사용
+            tcp_socket = self.manager.active_tcp_socket
+
+            print("데이터 전송 중...")
+            tcp_socket.send(packet) # 공유 소켓으로 전송
+            tcp_socket.send(b"DONE") # 공유 소켓으로 전송
+
+            # 서버로부터 응답 받기 (최대 1024바이트)
+            response = tcp_socket.recv(1024) # 공유 소켓으로 수신
+            print("서버 응답:", response)
+        
+            if response is not None:
+                return True, "수량 업데이트 패킷 서버 전송 완료."
+            else:
+                return False, "수량 업데이트 패킷 서버 전송 실패 (통신 오류)."
+            
+        except Exception as e:
+            print("TCP 통신 오류:", e)
+            try: self.tcp_socket.close() 
+            except: pass
+        return False, f"수량 업데이트 패킷 서버 전송 실패 (통신 오류: {e})."
+
 
 
 if __name__ == "__main__":

@@ -15,7 +15,6 @@ import numpy as np
 import whisper
 import sounddevice as sd
 
-# from pages.pro_update import ProUpdateClass
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from db_connect import get_connection
@@ -53,8 +52,8 @@ class Sttclass(QMainWindow):
         super().__init__()
         self.manager = manager
 
-        self.setWindowTitle("구매희망 리스트 선택 화면")
-        self.setGeometry(100, 100, 1280, 720)
+        # self.setWindowTitle("구매희망 리스트 선택 화면")
+        # self.setGeometry(100, 100, 1280, 720)
         self.main_frame = None     # 메인 프레임 창을 저장할 변수
         self.initUI()
 
@@ -65,6 +64,9 @@ class Sttclass(QMainWindow):
 
 
     def initUI(self):
+
+        self.setWindowTitle("구매희망 리스트 선택 화면")
+        self.setGeometry(100, 100, 1280, 720)
         # QMainWindow는 레이아웃을 위해 Central Widget이 필요합니다.
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -74,16 +76,16 @@ class Sttclass(QMainWindow):
         
          # ✅ QTableWidget 생성
         self.product_info = QTableWidget()
-        self.product_info.setRowCount(0)  # 초기 행 개수
-        self.product_info.setColumnCount(3)  # 3개의 컬럼 생성
+        self.product_info.setRowCount(0)        # 초기 행 개수
+        self.product_info.setColumnCount(3)     # 2개의 컬럼 생성
         
         # 헤더 이름 설정
-        self.product_info.setHorizontalHeaderLabels(["id", "QTY", "RECV"])  
+        self.product_info.setHorizontalHeaderLabels(["Name", "QTY", "RECV"])  
 
         # ✅ 테이블 크기 조정
         self.product_info.resizeColumnsToContents()
         self.product_info.setColumnWidth(0, 150)
-        self.product_info.setColumnWidth(1, 200)
+        self.product_info.setColumnWidth(1, 150)
         self.product_info.setColumnWidth(2, 150)
 
         # ✅ 스타일 지정 (이미지와 유사하게)
@@ -109,35 +111,40 @@ class Sttclass(QMainWindow):
         # 또는 여백(Margin, Spacing)**을 조절해야 합니다.
 
         self.product_info.setMinimumSize(130, 130)  # 최소 크기 지정
-        self.product_info.setMaximumSize(470, 450)  # 최대 크기 제한
+        self.product_info.setMaximumSize(700, 700)  # 최대 크기 제한
         self.product_info.setSizePolicy(
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Expanding
         )
-
+        
+        
+        
          # ✅ 테이블 정렬 (화면 상단 / 중앙 / 하단 등)
         main_layout.addWidget(self.product_info, alignment=Qt.AlignmentFlag.AlignTop)   # 상단
         # main_layout.addWidget(self.product_info, alignment=Qt.AlignmentFlag.AlignCenter) # 중앙
         # main_layout.addWidget(self.product_info, alignment=Qt.AlignmentFlag.AlignBottom) # 하단
 
-        main_layout.setContentsMargins(430, 30, 300, 300)  # 왼쪽, 위, 오른쪽, 아래 여백(px)
-        main_layout.setSpacing(20)  # 위젯 간 간격
 
+        # 왼쪽, 위, 오른쪽, 아래 여백(px)
+        main_layout.setContentsMargins(330, 10, 330, 330)  
+        
+        # main_layout.setSpacing(20)  # 위젯 간 간격
 
+     
         # Stt_button 
-        self.Stt_button = QPushButton("음성으로 장바구니 담기.!!", self)
-        self.Stt_button.clicked.connect(self.record_once)
+        # self.Stt_button = QPushButton("음성으로 장바구니 담기.!!", self)
+        # self.Stt_button.clicked.connect(self.record_once)
 
         # ❗ 수치로 위치와 크기 지정
-        self.Stt_button.move(430, 470)   # X=150, Y=220
-        self.Stt_button.resize(220, 50)  # 너비 100, 높이 30
+        # self.Stt_button.move(430, 470)   # X=150, Y=220
+        # self.Stt_button.resize(220, 50)  # 너비 100, 높이 30
 
          # PC화면_button 
         self.browser_button = QPushButton("PC에서 장바구니 담기.!!", self)
         self.browser_button.clicked.connect(self.pc_browser)
 
-        # ❗ 수치로 위치와 크기 지정
-        self.browser_button.move(660, 470)   # X=150, Y=220
+        # # ❗ 수치로 위치와 크기 지정
+        self.browser_button.move(660,600)   # X=150, Y=220
         self.browser_button.resize(220, 50)  # 너비 100, 높이 30
 
 
@@ -146,31 +153,13 @@ class Sttclass(QMainWindow):
         self.back_button.clicked.connect(self.backMove)
 
         # ❗ back_button > 수치로 위치와 크기 지정
-        self.back_button.move(100, 40)   # X=150, Y=220
-        self.back_button.resize(200, 40)  # 너비 100, 높이 30
-
-        # # 물품정보 업데이트_button 
-        # # self.receive_product_info("0.0.0.0", 3000)
-        # self.product_update_button = QPushButton("물품 정보 업데이트", self)
-        # self.product_update_button.clicked.connect(self.receive_product_info)
-
-        # # ❗ 물품정보 업데이트 수치로 위치와 크기 지정
-        # self.product_update_button.move(430, 530)   # X=150, Y=220
-        # self.product_update_button.resize(210, 50)  # 너비 100, 높이 30
-
-
-        # 온라인 쇼핑 시작_button 
-        self.shopping_start_button = QPushButton("쇼핑리스트 보러가기", self)
-        self.shopping_start_button.clicked.connect(self.shopping_start)
-
-        # ❗ 수치로 위치와 크기 지정
-        self.shopping_start_button.move(660, 530)   # X=150, Y=220
-        self.shopping_start_button.resize(220, 50)  # 너비 100, 높이 30
+        self.back_button.move(430,600)   # X=150, Y=220
+        self.back_button.resize(200, 50)  # 너비 100, 높이 30
 
 
         # 레이아웃에 위젯 추가
-        # main_layout.addWidget(self.Stt_button)
         main_layout.addWidget(self.product_info)
+        # self.setLayout(main_layout)
         central_widget.setLayout(main_layout)
 
         # Whisper 모델 미리 로드
@@ -206,7 +195,7 @@ class Sttclass(QMainWindow):
         """
 
         # 1) 앞뒤 DONE 제거
-        data = raw_data[4:-4]
+        data = raw_data[20:-4]
 
         # 2. 4바이트씩 나누어 숫자로 변환
         numbers = []
@@ -223,41 +212,38 @@ class Sttclass(QMainWindow):
 
         # 3) 받은 데이터의 절반을 ID/QTY 개수로 계산
         #    (total_count가 20이면, num_items는 10이 됨)
-        num_items = total_count // 2 
+        num_items = total_count 
+        
 
-        ids = values[:num_items]   # 0번부터 9번까지 (10개)
-        qtys = values[num_items:]  # 10번부터 19번까지 (10개)
+        # ids = values[:num_items]   # 0번부터 9번까지 (10개)
+        # qtys = values[num_items:]  # 10번부터 19번까지 (10개)
+        qtys = values  # 10번부터 19번까지 (10개)
+
+        # (1) Name 16개 고정 리스트
+        fixed_names = [
+            "soju", "beer", "ketchap", "mayonaise",
+            "Snack_Org", "Snack_Ylw", "sushi", "pizza",
+            "frypan", "pot", "strawberry", "watermelon",
+            "grape", "deco_tree", "deco_santa", "deco_ring"
+        ]
+
 
         # 3) GUI 테이블 초기화 (16줄이 아닌, 받은 만큼만)
         self.product_info.setRowCount(num_items)
 
         # 16번이 아닌, 받은 개수(num_items)만큼만 반복
         for i in range(num_items):
-            # i가 0~9까지 돌기 때문에 IndexError가 발생하지 않음
-            id_item = QTableWidgetItem(str(ids[i]))
+            # id_item = QTableWidgetItem(str(ids[i]))
+            
+             # Name 컬럼
+            name_item = QTableWidgetItem(fixed_names[i])
             qty_item = QTableWidgetItem(str(qtys[i]))
-            recv_item = QTableWidgetItem("OK")   # RECV 임의값 저장
-
-            self.product_info.setItem(i, 0, id_item)
+            recv_item = QTableWidgetItem("OK")      # RECV 임의값 저장
+                    
+            self.product_info.setItem(i, 0, name_item)
             self.product_info.setItem(i, 1, qty_item)
             self.product_info.setItem(i, 2, recv_item)
-
-        # ids = values[:16]
-        # qtys = values[16:32]
-
-        # # 3) GUI 테이블 초기화
-        # self.product_info.setRowCount(16)
-
-        # for i in range(16):
-        #     id_item = QTableWidgetItem(str(ids[i]))
-        #     qty_item = QTableWidgetItem(str(qtys[i]))
-        #     recv_item = QTableWidgetItem("OK")   # RECV 임의값 저장
-
-        #     self.product_info.setItem(i, 0, id_item)
-        #     self.product_info.setItem(i, 1, qty_item)
-        #     self.product_info.setItem(i, 2, recv_item)
-
-        self.product_info.resizeColumnsToContents()
+            
 
 
     def pc_browser(self):
@@ -269,36 +255,6 @@ class Sttclass(QMainWindow):
 
     def backMove(self):
         self.manager.show_page("MainFrame")
-
-     
-
-    def save_to_db(self, text):
-        """
-        MySQL DB에 STT 결과를 저장하는 함수
-        """
-        try:
-            conn = get_connection()
-            cursor = conn.cursor()
-            
-            # sql = "INSERT INTO users (username, password ,stt_results) VALUES (%s,%s ,%s)" \
-            
-            sql = """
-                INSERT INTO users (username, password , stt_results)
-                VALUES (%s, %s, %s)
-                ON DUPLICATE KEY UPDATE
-                stt_results = VALUES(stt_results)
-                """
-
-            cursor.execute(sql, ("test", 1234, text))
-
-            
-            conn.commit()
-            return True, "DB 저장 성공"
-        except Exception as e:
-            return False, f"DB 저장 실패: {e}"
-        finally:
-            cursor.close()
-            conn.close()
 
 
     def record_once(self):
@@ -317,8 +273,12 @@ class Sttclass(QMainWindow):
         text = result["text"]
         print("STT 결과:", text)
 
-        # 4. DB 저장
-        success, msg = self.save_to_db(text)
+        # # 4. DB 저장
+        # success, msg = self.save_to_db(text)
+
+        # ⭐ 4. 새로 만든 로직 호출! (매칭 및 패킷 생성)
+        success, msg = self.process_stt_result(text)
+
 
         # 5. 저장 결과 GUI 알림
         if success:
@@ -327,7 +287,7 @@ class Sttclass(QMainWindow):
             QMessageBox.critical(self, "오류", msg)
 
         return text
-
+    
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

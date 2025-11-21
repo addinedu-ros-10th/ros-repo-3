@@ -22,6 +22,7 @@ class LoginTcpWindow(QWidget):
         self.manager = manager
         self.main_frame = None
 
+        # ⭐⭐⭐ self.tcp_socket을 클래스 멤버 변수로 생성
         self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         
         self.initUI()
@@ -51,7 +52,6 @@ class LoginTcpWindow(QWidget):
         self.setLayout(main_layout)
 
 
-    # def make_update_packet(item_id, quantities, recv_flag):
     def make_update_packet(self, Transaction_ID, Length_of_data, function_id, username):
     
         """
@@ -103,40 +103,38 @@ class LoginTcpWindow(QWidget):
 
         return packet
     
-        
 
     def send_to_server(self, ip, port, packet):
         """
         서버로 TCP 데이터 전송
         """
-
         try:
-            
-            # with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
-            
-                # socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            # ⭐ socket.socket()을 with 문 내에서 생성
+            # with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as tcp_socket:
                 print(f"서버({ip}:{port})에 연결 중...")
-                self.tcp_socket.connect((ip, port))
-
+                self.tcp_socket.connect((ip, port)) 
+                # tcp_socket.connect((ip, port)) # ⭐ 새로운 소켓 연결
                 print("데이터 전송 중...")
-                # client.sendall(packet)
+                
                 self.tcp_socket.send(packet)
-                self.tcp_socket.send(b"DONE")
-
-
+                
+                self.tcp_socket.send(b"DONE") 
+                
                 # 서버로부터 응답 받기 (최대 1024바이트)
-                response = self.tcp_socket.recv(1024)
-
+                # response = self.tcp_socket.recv(1024) <- 기존 코드
+                response = self.tcp_socket.recv(1024) # ⭐ 새로운 소켓으로 수신
                 # print("서버 응답:", response.hex())
                 print("서버 응답:", response)
-
                 
-                # b'\x11\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x00 > false
+                # ... (로그인 성공/실패 처리 로직은 동일) ...
                 if response == b'\x11\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x01':
-                # 로그인 성공
-                # QMessageBox.information(self, "로그인 성공", f"{username}님 환영합니다!")
+
+                # ... (로그인 성공 시) ...
                     QMessageBox.information(self, "로그인 성공", "스마트 쇼핑에 오신 걸 환영합니다!")
 
+                    # ⭐ 로그인 성공 시, 연결된 소켓 객체를 manager에 공유
+                    self.manager.active_tcp_socket = self.tcp_socket
+                        
                     self.main_frame = MainFrame(
                         manager=self.manager,
                         # username=username,
@@ -148,13 +146,12 @@ class LoginTcpWindow(QWidget):
                     self.input_pw.clear()
                     self.input_user.clear()
 
-                    print("서버 응답:", response)
 
-                    # ⭐ 매장 상품 데이터 응답(2번째 응답) 수신 > 최대 1024
-                    prd_response = self.tcp_socket.recv(1024)
+                # ⭐ 매장 상품 데이터 응답(2번째 응답) 수신 > 최대 1024
+                    prd_response = self.tcp_socket.recv(1024) 
                     print("상품 정보 응답:", prd_response)
 
-                    # ⭐ Sttclass 에 전달
+                # ⭐ Sttclass 에 전달
                     self.manager.shared_product_data = prd_response
 
 
@@ -164,21 +161,12 @@ class LoginTcpWindow(QWidget):
                 else:
                         QMessageBox.critical(self, "연결 실패", "서버 응답이 없거나 통신 오류가 발생했습니다.")
 
-
-
-        except Exception as e:
-                    print("TCP 통신 오류:", e)
                     
-                    return None
-        
-    # def __del__(self):
-    #     self.tcp_socket.close()
-
-    def close_connection(self):
-        try:
-            self.tcp_socket.close()
-        except:
-            pass
+        except Exception as e:
+            print("TCP 통신 오류:", e)
+            try: self.tcp_socket.close() 
+            except: pass
+            return None
 
 
     # -------------------------------

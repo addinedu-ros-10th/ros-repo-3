@@ -29,7 +29,7 @@ class MainFrame(QMainWindow):
 
         # --- 1. 환영 메시지 라벨 ---
         # 부모 위젯을 central_widget으로 지정합니다.
-        self.name_label = QLabel(f"환영합니다, {username}님!", central_widget) 
+        self.name_label = QLabel(f"환영합니다, 고객님!", central_widget) 
         font = self.name_label.font()
         font.setPointSize(16)
         self.name_label.setFont(font)
@@ -46,12 +46,12 @@ class MainFrame(QMainWindow):
         self.photo_label = QLabel(central_widget) # 부모 지정
         self.photo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
-        pixmap = QPixmap(photo_path)
+        pixmap = QPixmap("/home/geonpc/dev-ws/ros-repo-3/OnGui/pages/man.png")
         if pixmap.isNull():
-            pixmap = QPixmap(450,300)
+            pixmap = QPixmap(200,200)
             pixmap.fill(QColor("gray"))
         
-        self.photo_label.setPixmap(pixmap.scaled(450, 450, Qt.AspectRatioMode.KeepAspectRatio))
+        self.photo_label.setPixmap(pixmap.scaled(200, 200, Qt.AspectRatioMode.KeepAspectRatio))
 
         # ❗ 수치로 위치와 크기 지정 (창의 중앙 근처)
         self.photo_label.move(400, 20)    # X=150, Y=80
@@ -97,6 +97,7 @@ if __name__ == "__main__":
             print("로그인 창이 다시 나타났습니다.")
             
     test_frame = MainFrame(
+        
         username="테스트 사용자", 
         photo_path="invalid_path.png", 
         login_window=FakeLoginWindow()
