@@ -3,8 +3,9 @@ from rclpy.node import Node
 from geometry_msgs.msg import Twist
 import math
 from rcl_interfaces.msg import SetParametersResult
-from std_msgs.msg import Float64
+from std_msgs.msg import Float64, Bool
 from pinky_msgs.msg import RobotState, PoseOrder, ItemReq
+from pinky_msgs.srv import Usercheck
 
 from .tcp_socket import TCPSocket
 from .config import *
@@ -40,7 +41,9 @@ class MarketCoreManager(Node):
         self.task_list = []
         self.total_position_list = []
         self.pinky31_item_list = []
+        self.pinky31_item_list_total = 0
         self.pinky32_item_list = []
+        self.pinky32_item_list_total = 0
 
         self.robot_status_period = 0.5
         self.task_checker_period = 3
@@ -74,20 +77,11 @@ class MarketCoreManager(Node):
             10
         )
 
-
-        self.user_check_req_subscriber = self.create_subscription(
-            ItemReq,
+        self.user_check_req_service = self.create_service(
+            Usercheck,
             'user_check',
-            self.user_check_req_callback,
-            10
-        )
-
-        self.user_check_resp_publisher = self.create_publisher(
-            ItemReq,
-            'user_resp',
-            10
-        )
-
+            self.user_check_req_callback
+            )
 
         self.robot_status_timer = self.create_timer(self.robot_status_period, self.robot_status_callback)
         self.task_checker = self.create_timer(self.task_checker_period, self.task_checker_callback)
@@ -99,23 +93,18 @@ class MarketCoreManager(Node):
 
         self.get_logger().info(f"INIT COMPLETE")
 
-    def user_check_req_callback(self, msg):   
+    def user_check_req_callback(self, request, response):   
         sql = "SELECT id FROM user_info"
         self.cursor.execute(sql)
         result = self.cursor.fetchall()
         data = False
         for i in result:
-            if (i[0] == msg.item):
+            if (i[0] == request.user_id):
                 data = True
                 break
-        
-        pub_msg = ItemReq
-        pub_msg.cid = msg.cid
-        if (data):
-            pub_msg.item = 1
-        else:
-            pub_msg.item = 0
-        self.user_check_resp_publisher.publish(pub_msg)
+
+        response.user_check_result = data
+        return response
 
     def item_req_callback(self, msg):
         item_id = msg.item
@@ -139,7 +128,8 @@ class MarketCoreManager(Node):
             pass
 
     def robot_command_callback(self):
-        sql = "SELECT * FROM "
+        pass
+        # if (len())
 
     def robot_status_callback(self):
         if (not self.robot_status_queue.empty()):

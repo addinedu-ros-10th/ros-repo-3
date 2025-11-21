@@ -43,40 +43,25 @@ class StateMachine:
 
 
 STATE_TABLE = {
-    0: State(0, "CART_INIT",          {"DEFAULT": 1}),               # CHARGE_STBY
-    1: State(1, "CHARGE_STBY",        {"DEFAULT": 2}),               # TASK_STBY
+    0: State(0, "CART_INIT",          {"NEXT": 1}),               # CHARGE_STBY
+    1: State(1, "CHARGE_STBY",        {"NEXT": 2}),               # TASK_STBY
 
     # TASK_STBY → event-driven (online/offline)
-    2: State(2, "TASK_STBY", {
-        "ONLINE": 3,
-        "OFFLINE": 33
-    }),
+    2: State(2, "TASK_STBY",          {"ONLINE": 3, "OFFLINE": 33}),
+    3: State(3, "ONLINE_DRIVE",       {"PICKUP": 4, "PACKING": 6}),
+    4: State(4, "ONLINE_PICKUP",      {"STBY": 5}),
+    5: State(5, "ONLINE_STBY",        {"DRIVE": 3}),
+    6: State(6, "ONLINE_PACKING",     {"END": 7}),
+    7: State(7, "ONLINE_END",         {"RETURN": 255}),
 
-    3: State(3, "ONLINE_DRIVE",       {"DEFAULT": 4}),
-    4: State(4, "ONLINE_PICKUP",      {"DEFAULT": 5}),
-    5: State(5, "ONLINE_STBY",        {"DEFAULT": 3}),
-    6: State(6, "ONLINE_PACKING",     {"DEFAULT": 7}),
-    7: State(7, "ONLINE_END",         {"DEFAULT": 255}),
-
-    33: State(33, "OFFLINE_IDCHECK",  {"DEFAULT": 34}),
-    34: State(34, "OFFLINE_USERCHECK",{"DEFAULT": 35}),
-
+    33: State(33, "OFFLINE_IDCHECK",  {"USERCHECK": 34}),
+    34: State(34, "OFFLINE_USERCHECK",{"STBY": 35}),
     # OFFLINE_STBY → two branches (follow/drive)
-    35: State(35, "OFFLINE_STBY", {
-        "FOLLOW": 36,
-        "DRIVE": 37
-    }),
-
-    36: State(36, "OFFLINE_FOLLOW",   {"DEFAULT": 35}),
-
+    35: State(35, "OFFLINE_STBY",     {"FOLLOW": 36, "DRIVE": 37}),
+    36: State(36, "OFFLINE_FOLLOW",   {"STBY": 35}),
     # OFFLINE_DRIVE → two branches (stby/packing)
-    37: State(37, "OFFLINE_DRIVE", {
-        "STBY": 35,
-        "PACKING": 38
-    }),
-
-    38: State(38, "OFFLINE_PACKING",  {"DEFAULT": 39}),
-    39: State(39, "OFFLINE_END",      {"DEFAULT": 255}),
-
-    255: State(255, "RETRUN",         {"DEFAULT": 1}),               # CHARGE_STBY
+    37: State(37, "OFFLINE_DRIVE",    {"STBY": 35, "PACKING": 38}),
+    38: State(38, "OFFLINE_PACKING",  {"END": 39}),
+    39: State(39, "OFFLINE_END",      {"RETURN": 255}),
+    255: State(255, "RETRUN_CHRG",         {"CHARGE": 1}),               # CHARGE_STBY
 }

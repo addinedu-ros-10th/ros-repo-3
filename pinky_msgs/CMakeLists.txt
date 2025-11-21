@@ -17,8 +17,10 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/RobotState.msg"
   "msg/PoseOrder.msg"
   "msg/Encoder.msg"
-  "msg/Humanpos.msg"
+  "msg/HumanPos.msg"
   "msg/ItemReq.msg"
+  "srv/Usercheck.srv"
+  DEPENDENCIES std_msgs
  )
 
 if(BUILD_TESTING)
