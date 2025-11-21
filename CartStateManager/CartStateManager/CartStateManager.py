@@ -5,7 +5,7 @@ from std_msgs.msg import String, Float32
 from nav_msgs.msg import Odometry
 from rcl_interfaces.msg import SetParametersResult
 from std_msgs.msg import Float64
-from pinky_msgs.msg import RobotState, PoseOrder, Humanpos, ItemReq
+from pinky_msgs.msg import RobotState, PoseOrder, HumanPos, ItemReq
 from pinky_msgs.srv import Usercheck
 
 from .tcp_socket import TCPSocket
@@ -56,7 +56,7 @@ class CartStateManager(Node):
         )
 
         self.human_pose_publisher = self.create_publisher(
-            Humanpos,
+            HumanPos,
             'human_pos',
             10
         )
@@ -231,7 +231,7 @@ class CartStateManager(Node):
 
         if (struct.unpack("<i",data[8:12])[0] == PERCEPTIONMANAGER_FUNCTION2_ID):
             cam_data = struct.unpack(PERCEPTIONMANAGER_FUNCTION_2, data[12:])
-            msg = Humanpos()
+            msg = HumanPos()
 
             msg.camid = cam_data[2]
             msg.posx = cam_data[3]
