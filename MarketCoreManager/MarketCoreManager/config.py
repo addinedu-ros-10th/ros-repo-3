@@ -1,6 +1,6 @@
 
 
-MARKETCOREMANAGER_IP = "192.168.0.180"
+MARKETCOREMANAGER_IP = "0.0.0.0"
 
 MARKETCOREMANAGER_ID = 1 
 
@@ -8,7 +8,7 @@ INTERFACECOMMON = "<iii"
 
 #-----------------------------------------------
 # OnGui Parameters
-ONGUI_PORT = 3000
+ONGUI_PORT = 7000
 ONGUI_ID = 17
 ONGUI_REQ1_ID = 1
 ONGUI_REQ2_ID = 2
@@ -32,7 +32,7 @@ ONGUI_RECV4 = "ii"
 
 #-----------------------------------------------
 # AdminGui Parameters
-ADMINGUI_PORT = 3001
+ADMINGUI_PORT = 7001
 ADMINGUI_ID = 18
 ADMINGUI_REQ1_ID = 1
 ADMINGUI_REQ2_ID = 2

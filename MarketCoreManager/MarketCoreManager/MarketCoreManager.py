@@ -134,8 +134,8 @@ class MarketCoreManager(Node):
         data = self.cursor.fetchall()
         if (len(self.pinky31_item_list) > 0):
             self.pinky31_task_init = True
-
-            if (data[0] in [2, 5]): #STATE ID TASK_STBY, ONLINE_STBY
+            print("TASK_INIT")
+            if (data[0][0] in [2, 5]): #STATE ID TASK_STBY, ONLINE_STBY
                 for idx, i in enumerate(self.pinky31_item_list):
                     if (i > 0):
                         if (idx in self.task_list):
@@ -269,6 +269,7 @@ class MarketCoreManager(Node):
             if (i[1] == 2):
                 if (i[0] == 0):
                     self.pinky31_item_list = list(map(int, order_list[1:-1].split(", ")))
+                    print(self.pinky31_item_list)
                     robot_id = i[0]
                     break
                 elif (i[0] == 1):
@@ -281,7 +282,7 @@ class MarketCoreManager(Node):
                 pass
 
         if (not (robot_id < 0)): 
-            sql = f"INSERT task (order_id, task_status_id, robot_id) VALUES {order_id}, {1}, {robot_id}"
+            sql = f"INSERT task (order_id, task_status_id, robot_id) VALUES ({order_id}, 1, {robot_id})"
             self.cursor.execute(sql)
             self.dbms.commit()
 
@@ -458,8 +459,7 @@ class MarketCoreManager(Node):
                 "coordinate_x = %s, " \
                 "coordinate_y = %s " \
                 "WHERE robot_id = %s"
-
-                self.cursor.execute(sql, (user_id, battery, posx, posy, cart_id))
+                self.cursor.execute(sql, (state_id, battery, posx, posy, cart_id))
                 self.dbms.commit()
         else:
             sql = "INSERT INTO robot_state (robot_id, robot_status_id, battery_state_id, error_status_id, connection_state_id, coordinate_x, coordinate_y)" \
@@ -499,9 +499,10 @@ class MarketCoreManager(Node):
                 "coordinate_y = %s " \
                 "WHERE robot_id = %s"
 
-                self.cursor.execute(sql, (user_id, battery, posx, posy, cart_id))
+                self.cursor.execute(sql, (state_id, battery, posx, posy, cart_id))
                 self.dbms.commit()
         else:
+            print("Errorcheck")
             sql = "INSERT INTO robot_state (robot_id, robot_status_id, battery_state_id, error_status_id, connection_state_id, coordinate_x, coordinate_y)" \
             " VALUES (%s, %s, %s, 0, 1, %s, %s)"
             self.cursor.execute(sql, (cart_id, state_id, battery, posx, posy))
