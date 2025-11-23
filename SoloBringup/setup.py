@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'ActuatorManager'
+package_name = 'SoloBringup'
 
 setup(
     name=package_name,
@@ -13,14 +13,17 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='ad',
-    maintainer_email='isugkgkgk@gmail.com',
+    maintainer='pinky',
+    maintainer_email='pinky@todo.todo',
     description='TODO: Package description',
     license='TODO: License declaration',
-    tests_require=['pytest'],
+    extras_require={
+        'test': [
+            'pytest',
+        ],
+    },
     entry_points={
         'console_scripts': [
-            "ActuatorManager = ActuatorManager.ActuatorManager:main"
         ],
     },
 )

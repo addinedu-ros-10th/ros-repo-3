@@ -30,7 +30,7 @@ class SensorManager(Node):
         self.battery = Battery()
         self.Imu = IMU()
 
-        self.last_time = 0
+        self.last_time = self.get_clock().now()
         self.last_encoder_l = 0
         self.last_encoder_r = 0
         self.theta = 0
@@ -38,7 +38,7 @@ class SensorManager(Node):
         self.y = 0
 
         self.battery_timer_period = 5.0
-        self.imu_timer_period = 0.1
+        self.imu_timer_period = 0.02
 
         self.percentage_timer = self.create_timer(self.battery_timer_period, self.battery_percentage_callback)
         self.imu_timer = self.create_timer(self.imu_timer_period, self.imu_sensor_callback)
