@@ -126,7 +126,7 @@ class Sttclass(QMainWindow):
 
 
         # 왼쪽, 위, 오른쪽, 아래 여백(px)
-        main_layout.setContentsMargins(330, 10, 330, 330)  
+        main_layout.setContentsMargins(400, 10, 395, 180)  
         
         # main_layout.setSpacing(20)  # 위젯 간 간격
 
@@ -144,8 +144,8 @@ class Sttclass(QMainWindow):
         self.browser_button.clicked.connect(self.pc_browser)
 
         # # ❗ 수치로 위치와 크기 지정
-        self.browser_button.move(660,600)   # X=150, Y=220
-        self.browser_button.resize(220, 50)  # 너비 100, 높이 30
+        self.browser_button.move(660,550)   # X=150, Y=220
+        self.browser_button.resize(230, 50)  # 너비 100, 높이 30
 
 
         # back_button 
@@ -153,8 +153,8 @@ class Sttclass(QMainWindow):
         self.back_button.clicked.connect(self.backMove)
 
         # ❗ back_button > 수치로 위치와 크기 지정
-        self.back_button.move(430,600)   # X=150, Y=220
-        self.back_button.resize(200, 50)  # 너비 100, 높이 30
+        self.back_button.move(400,550)   # X=150, Y=220
+        self.back_button.resize(230, 50)  # 너비 100, 높이 30
 
 
         # 레이아웃에 위젯 추가

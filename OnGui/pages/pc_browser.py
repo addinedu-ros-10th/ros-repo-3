@@ -106,9 +106,9 @@ class PC_BrowserClass(QMainWindow):
 
         # ✅ 테이블 크기 조정
         self.product_info.resizeColumnsToContents()
-        self.product_info.setColumnWidth(0, 150)
-        self.product_info.setColumnWidth(1, 150)
-        self.product_info.setColumnWidth(2, 150)
+        self.product_info.setColumnWidth(0, 145)
+        self.product_info.setColumnWidth(1, 145)
+        self.product_info.setColumnWidth(2, 145)
 
         # ✅ 스타일 지정 (이미지와 유사하게)
         self.product_info.setStyleSheet("""
@@ -145,7 +145,7 @@ class PC_BrowserClass(QMainWindow):
         # main_layout.addWidget(self.product_info, alignment=Qt.AlignmentFlag.AlignBottom) # 하단
 
         # 왼쪽, 위, 오른쪽, 아래 여백(px)
-        main_layout.setContentsMargins(220, 100, 380, 270)  
+        main_layout.setContentsMargins(220, 100, 400, 270)  
         main_layout.setSpacing(20)  # 위젯 간 간격
 
 
@@ -336,6 +336,29 @@ class PC_BrowserClass(QMainWindow):
             self.product_info.setItem(i, 1, qty_item)
             self.product_info.setItem(i, 2, recv_item)
 
+    def clear_socket_buffer(self, tcp_socket):
+        """
+        소켓 버퍼에 남아있는 데이터를 강제로 읽어 비우는 함수.
+        """
+        import time
+        tcp_socket.settimeout(0.01) # 짧은 타임아웃 설정
+        
+        # 반복적으로 recv를 호출하여 버퍼를 비웁니다.
+        while True:
+            try:
+                # 최대 1024바이트를 읽습니다.
+                data = tcp_socket.recv(1024) 
+                if not data:
+                    break # 읽을 데이터가 없으면 루프 종료
+                print(f"잔여 버퍼 데이터 발견 및 제거: {data}")
+            except TimeoutError:
+                # 타임아웃이 발생하면 버퍼가 비워진 것으로 간주하고 종료
+                break
+            except Exception as e:
+                print(f"버퍼 비우는 중 오류 발생: {e}")
+                break
+        
+        tcp_socket.settimeout(None) # 원래대로 블로킹 모드 복원 (필요하다면)
 
     def send_wishlist_to_server(self):
         """
@@ -343,6 +366,12 @@ class PC_BrowserClass(QMainWindow):
         서버로 4바이트 int 들을 바이너리로 변환해 전송하는 함수
         ※ ID는 보내지 않고, QTY(=사용자가 입력한 순번별 수량)만 전송
         """
+        fixed_names = [
+            "soju", "beer", "ketchap", "mayonaise",
+            "Snack_Org", "Snack_Ylw", "sushi", "pizza",
+            "frypan", "pot", "strawberry", "watermelon",
+            "grape", "deco_tree", "deco_santa", "deco_ring"
+        ]
 
         # 1) 구매리스트에서 줄 단위 텍스트 가져오기
         raw_text = self.product_label.text().strip()
@@ -352,28 +381,40 @@ class PC_BrowserClass(QMainWindow):
             return
 
         # 2) "1. 사과" → "사과" 형태로 변환
-        qty_list = []
-               
+        # qty_list = []
+        qty_list = [0] * 16
 
+        # 3) 구매 희망 상품 목록 추출 및 맵핑
         for line in raw_text.split("\n"):
             # 번호 제거 → "1. 라면" → "라면"
             if ". " in line:
-                line = line.split(". ", 1)[1]
+                item_name = line.split(". ", 1)[1].strip()
+            else:
+                item_name = line.strip()
 
-            qty_list.append(1)
+            # 상품명을 fixed_names에서 찾아서 QTY 리스트에 1 입력
+            try:
+                # 대소문자 구분을 위해 모두 소문자로 변환하여 비교 (필요 시)
+                # item_name_lower = item_name.lower()
+                
+                # fixed_names는 이미 소문자 형태이므로, 입력도 소문자 비교가 안전합니다.
+                idx = fixed_names.index(item_name)
+                
+                # 해당 위치에 1을 입력 (수량 = 1)
+                qty_list[idx] = 1 
+                
+            except ValueError:
+                # fixed_names에 없는 상품은 무시하거나 경고를 표시할 수 있습니다.
+                print(f"경고: 알 수 없는 상품명 '{item_name}'은 전송 목록에서 제외됩니다.")
 
-        # 3) 16개로 고정, 부족하면 0으로 패딩
-        # while len(qty_list) < 16:
-        #     qty_list.append(0)
-
-        # 3) int 리스트를 4바이트 little-endian 바이너리로 변환
+        
         # 예) [1,1,1] → b'\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00'
 
         # struct.pack의 포맷 문자열 생성:
         Transaction_ID = 1 
         Function_ID = 2    
         username = 1
-        Length_of_data = 69
+        Length_of_data = 69   #69
         
         Transaction_ID = int(Transaction_ID)
         username = int(username)
@@ -386,24 +427,24 @@ class PC_BrowserClass(QMainWindow):
         format_string = "<iiii" + "i" * 16 + "?" # bool 타입은 ?로 표기 
 
         # 패킷 데이터: Header 값 4개와 QTY 배열의 
-        # packet = struct.pack(
-        #     format_string,
-        #     Transaction_ID,
-        #     Length_of_data,
-        #     Function_ID,
-        #     username,
-        #     *qty_list,
-        #     recv   
-        # )
         packet = struct.pack(
             format_string,
             Transaction_ID,
             Length_of_data,
             Function_ID,
             username,
-            *[i for i in range(16)],   
-            recv                        
+            *qty_list,
+            recv   
         )
+        # packet = struct.pack(
+        #     format_string,
+        #     Transaction_ID,
+        #     Length_of_data,
+        #     Function_ID,
+        #     username,
+        #     *[i for i in range(16)],   
+        #     recv                        
+        # )
 
         # ⭐⭐ 핵심 수정: manager의 공유 소켓 사용 확인
         if not hasattr(self.manager, 'active_tcp_socket') or self.manager.active_tcp_socket is None:
@@ -413,12 +454,16 @@ class PC_BrowserClass(QMainWindow):
             # ⭐ 공유된 소켓 객체를 가져와서 사용
             tcp_socket = self.manager.active_tcp_socket
 
+            # ⭐ 추가: 전송 전에 소켓 버퍼를 강제 초기화
+            self.clear_socket_buffer(tcp_socket)
+
             print("데이터 전송 중...")
-            tcp_socket.send(packet) # 공유 소켓으로 전송
-            tcp_socket.send(b"DONE") # 공유 소켓으로 전송
+            tcp_socket.send(packet)      # 공유 소켓으로 전송
+            tcp_socket.send(b"DONE")   # 공유 소켓으로 전송
 
             # 서버로부터 응답 받기 (최대 1024바이트)
-            response = tcp_socket.recv(1024) # 공유 소켓으로 수신
+            response = tcp_socket.recv(1024)      # 공유 소켓으로 수신
+            
             print("서버 응답:", response)
         
             if response is not None:
