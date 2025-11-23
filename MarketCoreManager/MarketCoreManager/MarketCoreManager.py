@@ -39,11 +39,12 @@ class MarketCoreManager(Node):
         self.thread_list = []
 
         self.task_list = []
-        self.total_position_list = []
         self.pinky31_item_list = []
-        self.pinky31_item_list_total = 0
+        self.pinky31_task_init = False
+        self.pinky31_current_task = -1
         self.pinky32_item_list = []
-        self.pinky32_item_list_total = 0
+        self.pinky32_task_init = False
+        self.pinky32_current_task = -1
 
         self.robot_status_period = 0.5
         self.task_checker_period = 3
@@ -128,7 +129,119 @@ class MarketCoreManager(Node):
             pass
 
     def robot_command_callback(self):
-        pass
+        sql = f"SELECT robot_status_id FROM robot_state WHERE robot_id = {0}"
+        self.cursor.execute(sql)
+        data = self.cursor.fetchall()
+        if (len(self.pinky31_item_list) > 0):
+            self.pinky31_task_init = True
+
+            if (data[0] in [2, 5]): #STATE ID TASK_STBY, ONLINE_STBY
+                for idx, i in enumerate(self.pinky31_item_list):
+                    if (i > 0):
+                        if (idx in self.task_list):
+                            continue
+                        else:
+                            self.task_list.append(idx)
+                            self.pinky31_current_task = idx
+                            break
+
+                sql = "SELECT location.coordinate_x, location.coordinate_y, location.coordinate_theta " \
+                "FROM location, item_list " \
+                f"WHERE item_list.iid = {idx} " \
+                "AND item_list.location_id = location.id"
+                self.cursor.execute(sql)
+                data = self.cursor.fetchall()
+                print(data)
+                if (len(data) > 0):
+                    pub_msg = PoseOrder()
+                    pub_msg.cid = 0
+                    pub_msg.posx = data[0][0]
+                    pub_msg.posy = data[0][1]
+                    pub_msg.theta = data[0][2]
+                    self.robot_position_order_publisher.publish(pub_msg)
+            else:
+                pass
+        else:
+            if (data in [7, 39]): #STATE ID ONLINE_END, OFFLINE_END
+                pub_msg = PoseOrder()
+                pub_msg.cid = 0
+                pub_msg.posx = -0.21
+                pub_msg.posy = -1.57
+                pub_msg.theta = 1.57
+                self.robot_position_order_publisher.publish(pub_msg)
+                self.pinky31_current_task = -1
+
+                sql = f"UPDATE task SET task_status_id = 2, WHERE robot_id = {0} ORDER BY task_id ASC"
+                self.cursor.execute(sql)
+                self.dbms.commit()
+            else:
+                if (self.pinky31_task_init):
+                    pub_msg = PoseOrder()
+                    pub_msg.cid = 0
+                    pub_msg.posx = 0
+                    pub_msg.posy = 0
+                    pub_msg.theta = 0
+                    self.robot_position_order_publisher.publish(pub_msg)
+                    self.pinky31_task_init = False
+                else:
+                    pass
+
+        sql = f"SELECT robot_status_id FROM robot_state WHERE robot_id = {1}"
+        self.cursor.execute(sql)
+        data = self.cursor.fetchall()
+
+        if (len(self.pinky32_item_list) > 0):
+            for idx, i in enumerate(self.pinky32_item_list):
+                self.pinky32_task_init = True
+                if (i > 0):
+                    if (idx in self.task_list):
+                        continue
+                    else:
+                        self.task_list.append(idx)
+                        self.pinky32_current_task = idx
+                        break
+
+            sql = "SELECT location.coordinate_x, location.coordinate_y, location.coordinate_theta " \
+            "FROM location, item_list " \
+            f"WHERE item_list.iid = {idx} " \
+            "AND item_list.location_id = location.id"
+            self.cursor.execute(sql)
+            data = self.cursor.fetchall()
+            print(data)
+            if (len(data) > 0):
+                pub_msg = PoseOrder()
+                pub_msg.cid = 1
+                pub_msg.posx = data[0][0]
+                pub_msg.posy = data[0][1]
+                pub_msg.theta = data[0][2]
+                self.robot_position_order_publisher.publish(pub_msg)
+            else:
+                pass
+        else:
+            if (data in [7, 39]): #STATE ID ONLINE_END, OFFLINE_END
+                pub_msg = PoseOrder()
+                pub_msg.cid = 1
+                pub_msg.posx = -0.21
+                pub_msg.posy = -1.57
+                pub_msg.theta = 1.57
+                self.robot_position_order_publisher.publish(pub_msg)
+                self.pinky32_current_task = -1
+
+                sql = f"UPDATE task SET task_status_id = 2, WHERE robot_id = {0} ORDER BY task_id ASC"
+                self.cursor.execute(sql)
+                self.dbms.commit()
+            else:
+                if (self.pinky32_task_init):
+                    pub_msg = PoseOrder()
+                    pub_msg.cid = 1
+                    pub_msg.posx = 0
+                    pub_msg.posy = 0
+                    pub_msg.theta = 0
+                    self.robot_position_order_publisher.publish(pub_msg)
+                    self.pinky32_task_init = False
+                else:
+                    pass
+
         # if (len())
 
     def robot_status_callback(self):
@@ -354,6 +467,10 @@ class MarketCoreManager(Node):
             self.cursor.execute(sql, (cart_id, state_id, battery, posx, posy))
             self.dbms.commit()
 
+        if (self.pinky31_task_init and state_id == 5):
+            self.pinky31_item_list.pop(self.pinky31_current_task)
+            self.task_list.pop(self.pinky31_current_task)
+            
     def pinky32_callback(self, msg):
         cart_id = msg.cid
         user_id = msg.id
@@ -364,6 +481,35 @@ class MarketCoreManager(Node):
 
         send_data = struct.pack(INTERFACECOMMON+ADMINGUI_RECV3, ADMINGUI_ID, 32, ADMINGUI_RECV3_ID, *[cart_id, user_id, state_id, battery, posx, posy])
         self.robot_status_queue.put_nowait(send_data)
+        if self.robot_status_queue.full():
+            self.robot_status_queue.get_nowait()
+        self.robot_status_queue.put_nowait(send_data)
+        
+        sql = f"SELECT robot_id FROM robot_state WHERE robot_id = {cart_id}"
+        self.cursor.execute(sql)
+        data = self.cursor.fetchall()
+
+        if (len(data) > 0):
+                sql = "UPDATE robot_state SET " \
+                "robot_status_id = %s, " \
+                "battery_state_id = %s, " \
+                "error_status_id = 0, " \
+                "connection_state_id = 1, " \
+                "coordinate_x = %s, " \
+                "coordinate_y = %s " \
+                "WHERE robot_id = %s"
+
+                self.cursor.execute(sql, (user_id, battery, posx, posy, cart_id))
+                self.dbms.commit()
+        else:
+            sql = "INSERT INTO robot_state (robot_id, robot_status_id, battery_state_id, error_status_id, connection_state_id, coordinate_x, coordinate_y)" \
+            " VALUES (%s, %s, %s, 0, 1, %s, %s)"
+            self.cursor.execute(sql, (cart_id, state_id, battery, posx, posy))
+            self.dbms.commit()
+
+        if (self.pinky32_task_init and state_id == 5):
+            self.pinky32_item_list.pop(self.pinky32_current_task)
+            self.task_list.pop(self.pinky32_current_task)
 
     def __del__(self):
         self.dbms.close()

@@ -1,12 +1,14 @@
 import rclpy
 from rclpy.node import Node
-from geometry_msgs.msg import Twist, Pose2D
+from geometry_msgs.msg import Twist, Pose2D, TransformStamped, PoseWithCovarianceStamped
 from std_msgs.msg import String, Float32
 from nav_msgs.msg import Odometry
 from rcl_interfaces.msg import SetParametersResult
 from std_msgs.msg import Float64
 from pinky_msgs.msg import RobotState, PoseOrder, HumanPos, ItemReq
 from pinky_msgs.srv import Usercheck
+from tf2_ros import TransformBroadcaster
+
 
 from .tcp_socket import TCPSocket
 from .config import *
@@ -98,12 +100,23 @@ class CartStateManager(Node):
             self.state_event_callback,
             10
         )
+        self.amcl_pose_subscription = self.create_subscription(
+            PoseWithCovarianceStamped,
+            '/amcl_pose',
+            self.amcl_pose_callback,
+            rclpy.qos.qos_profile_sensor_data
+        )
+        self.tf_broadcaster = TransformBroadcaster(self)
 
         for t in self.thread_list:
             t.start()
         self.perception_manager_sending_timer = self.create_timer(self.state_code_timer, self.perception_manager_sending)
         self.interface_manager_sending_timer = self.create_timer(self.state_code_timer, self.interface_manager_sending)
         self.robot_status_sending_timer = self.create_timer(self.robot_status_timer, self.robot_status_sending)
+
+    def amcl_pose_callback(self, msg: PoseWithCovarianceStamped):
+        self.posx = msg.pose.pose.position.x
+        self.posy = msg.pose.pose.position.y
 
     def user_check_client_callback(self, msg : ItemReq):
         if msg.cid != self.robot_id:
@@ -123,14 +136,31 @@ class CartStateManager(Node):
         
         print(self.robot_id)
         if (self.robot_id == msg.cid):
-            self.state_machine.recv_event("DEFAULT")
-            self.destin_posx = msg.posx
-            self.destin_posy = msg.posy
-            self.destin_theta = msg.theta
+            if not (self.destin_posx == msg.posx and self.destin_posy == msg.posy and self.destin_theta == msg.theta):
+                self.destin_posx = msg.posx
+                self.destin_posy = msg.posy
+                self.destin_theta = msg.theta
+
+                current_state = self.state_machine.get_state()
+
+                if (current_state.state_id == 2):
+                    self.state_machine.recv_event("ONLINE")
+                else:
+                    self.state_machine.recv_event("DRIVE")
             print(self.destin_posx, self.destin_posy, self.destin_theta)
 
     def filtered_odom_callback(self, msg : Odometry):
-        self.posx, self.posy = msg.pose.pose.position.x, msg.pose.pose.position.y
+        current_time = self.get_clock().now()
+        posx, posy = msg.pose.pose.position.x, msg.pose.pose.position.y
+        quat = msg.pose.pose.orientation
+        t = TransformStamped()
+        t.header.stamp = current_time.to_msg()
+        t.header.frame_id = "odometry/filtered"
+        t.child_frame_id = "base_footprint"
+        t.transform.translation.x = self.posx
+        t.transform.translation.y = self.posy
+        t.transform.rotation = quat
+        self.tf_broadcaster.sendTransform(t)
 
     def battery_status_callback(self, msg : Float32):
         self.battery_percentage = msg.data
@@ -138,8 +168,6 @@ class CartStateManager(Node):
             if (self.battery_percentage > 40.0):
                 self.state_machine.recv_event("NEXT")
         
-        
-
     def robot_status_sending(self):
         msg = RobotState()
 
@@ -229,7 +257,7 @@ class CartStateManager(Node):
         if (struct.unpack("<i",data[8:12])[0] == PERCEPTIONMANAGER_FUNCTION1_ID):
             user_checked = struct.unpack(PERCEPTIONMANAGER_FUNCTION_1, data[12:])[0]
             if user_checked:
-                self.state_machine.recv_event("DEFAULT")
+                self.state_machine.recv_event("STBY")
 
 
         if (struct.unpack("<i",data[8:12])[0] == PERCEPTIONMANAGER_FUNCTION2_ID):
@@ -253,6 +281,7 @@ class CartStateManager(Node):
 
             self.user_check_client.wait_for_service()
 
+            self.state_machine.recv_event("OFFLINE")
             req = Usercheck.Request()
             req.req.cid = self.robot_id
             req.req.user_id = user_id
@@ -261,6 +290,7 @@ class CartStateManager(Node):
 
             if (response.result()):
                 self.user_id = user_id
+                self.state_machine.recv_event("USERCHECK")
             else:
                 self.user_id = -1
 

@@ -465,7 +465,11 @@ class ActuatorManager(Node):
         if status == GoalStatus.STATUS_SUCCEEDED:
             self.get_logger().info("목표 지점 도착 성공!")
             if (self.ending_sqeuence):
-                self.send_state_event("PACKING")
+                if (self.current_state == 255):
+                    self.send_state_event("CHARGE")
+                    self.ending_sqeuence = False
+                else:
+                    self.send_state_event("PACKING")
             else:
                 self.send_state_event("STBY")
         elif status == GoalStatus.STATUS_CANCELED:
