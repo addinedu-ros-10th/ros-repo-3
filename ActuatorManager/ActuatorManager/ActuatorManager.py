@@ -34,6 +34,8 @@ class ActuatorManager(Node):
         super().__init__('ActuatorManager')
 
         self.led = LED()
+        self.led.clear()
+        
         self.driver = DynamixelDriver(SERIAL_PORT_NAME, BAUDRATE, DYNAMIXEL_IDS)
 
         self.distance = 0
@@ -196,7 +198,7 @@ class ActuatorManager(Node):
         )
         
         self.tf_broadcaster = TransformBroadcaster(self)
-        self.timer = self.create_timer(1.0 / 30.0, self.update_and_publish)
+        self.timer = self.create_timer(1.0 / 50.0, self.update_and_publish)
 
         self.x = 0.0
         self.y = 0.0
@@ -347,6 +349,8 @@ class ActuatorManager(Node):
     def standby_order(self):
         # self.get_logger().info("pause 명령 수신: Nav2 주행 취소 시도")
         self.cancel_navigation()
+        self.led.fill(color = [0, 255, 0])
+        
             # self.get_logger().warn("취소할 Nav2 주행이 없습니다.")
 
     def cancel_navigation(self):
@@ -566,7 +570,9 @@ class ActuatorManager(Node):
 
         self.joint_pub.publish(joint_msg)
 
-
+    def __del__(self):
+        self.led.clear()
+        
 def main(args=None):
     rclpy.init(args=args)
     node = None

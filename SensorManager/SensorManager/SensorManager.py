@@ -19,7 +19,7 @@ RPM2RAD = 2 * math.pi / 60
 CIRCUMFERENCE = 2 * math.pi * WHEEL_RAD
 
 IMU_FRAMEID = "imu"
-ODOM_FRAMEID = "odom"
+ODOM_FRAMEID = "odometry"
 ODOM_CHILDID = "odometry/filtered"
 BATTERY_FRAMEID = "battery/present"
 ENCODER_FRAMEID = "encoder"

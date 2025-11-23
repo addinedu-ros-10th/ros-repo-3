@@ -1,0 +1,34 @@
+<?xml version='1.0' ?>
+
+<launch>
+    <arg name="use_sim_time" default="False"/> 
+    <arg name="ekf2_param_file" default="$(find-pkg-share SoloBringup)/params/ekf2_pinky.yaml"/>
+
+
+    <include file="$(find-pkg-share pinky_description)/launch/upload_robot.launch.py">
+        <arg name="use_sim_time" value="$(var use_sim_time)"/>
+    </include>
+
+    <include file="$(find-pkg-share sllidar_ros2)/launch/sllidar_c1_launch.py">
+        <arg name="serial_port" value="/dev/ttyAMA0"/>
+        <arg name="frame_id" value="rplidar_link"/>
+        <arg name="inverted" value="false"/>
+        <arg name="angle_compensate" value="true"/>
+        <arg name="scan_mode" value="DenseBoost"/>
+    </include>
+
+    <node pkg="robot_localization" exec="ekf_node">
+        <param from="$(var ekf2_param_file)"/>
+        <remap from="/odometry/filtered" to="/odom"/>
+    </node>
+    
+    <node pkg="ActuatorManager" exec="ActuatorManager">
+    </node>
+    
+    <node pkg="SensorManager" exec="SensorManager">
+    </node>
+
+    <node pkg="CartStateManager" exec="CartStateManager">
+    </node>
+    
+</launch>

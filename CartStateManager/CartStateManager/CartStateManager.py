@@ -82,7 +82,7 @@ class CartStateManager(Node):
 
         self.filtered_odom_subscriber = self.create_subscription(
             Odometry,
-            "odometry/filtered",
+            "odom",
             self.filtered_odom_callback,
             10
         )
@@ -155,7 +155,7 @@ class CartStateManager(Node):
         quat = msg.pose.pose.orientation
         t = TransformStamped()
         t.header.stamp = current_time.to_msg()
-        t.header.frame_id = "odometry/filtered"
+        t.header.frame_id = "odom"
         t.child_frame_id = "base_footprint"
         t.transform.translation.x = self.posx
         t.transform.translation.y = self.posy
