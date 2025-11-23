@@ -75,7 +75,7 @@ def find_shortest_path(start, end, blocked_nodes=None):
 
     return None
 
-def create_pose_stamped(self, x, y, theta_rad=None):
+def create_pose_stamped(x, y, theta_rad=None):
     """
     PoseStamped 생성
     - theta_rad가 주어지면: 해당 각도로 쿼터니언 생성

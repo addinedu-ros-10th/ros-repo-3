@@ -370,13 +370,18 @@ class ActuatorManager(Node):
 
     def amcl_pose_callback(self, msg: PoseWithCovarianceStamped):
         self.posx, self.posy = msg.pose.pose.position.x, msg.pose.pose.position.y
-        _, _, self.theta = euler_from_quaternion(msg.pose.pose.orientation)
+        _, _, self.theta = euler_from_quaternion(msg.pose.pose.orientation.x, 
+                                                 msg.pose.pose.orientation.y, 
+                                                 msg.pose.pose.orientation.z, 
+                                                 msg.pose.pose.orientation.w)
 
     def robot_state_callback(self, msg):
         self.robot_id = msg.cid
         self.user_id = msg.id
         self.current_state = msg.stid
         self.battery = msg.bat
+        self.posx = msg.posx
+        self.posy = msg.posy
 
     def position_order_callback(self, msg : PoseOrder):
         if (self.robot_id == msg.cid):

@@ -4,9 +4,9 @@ from rclpy.node import Node
 from tf_transformations import quaternion_from_euler
 
 from std_msgs.msg import Float32
-from sensor_msgs.msg import Imu
+from sensor_msgs.msg import Imu, LaserScan
 from nav_msgs.msg import Odometry
-from pinky_msgs.msg import Encoder
+from pinky_msgs.msg import Encoder, HumanPos
 
 import math
 from .imu import IMU
@@ -23,6 +23,7 @@ ODOM_FRAMEID = "odometry"
 ODOM_CHILDID = "odometry/filtered"
 BATTERY_FRAMEID = "battery/present"
 ENCODER_FRAMEID = "encoder"
+LIDAR_FRAMEID = "scan"
 
 class SensorManager(Node):
     def __init__(self):
@@ -61,12 +62,28 @@ class SensorManager(Node):
             10
         )
 
+        self.fined_human_publisher = self.create_publisher(
+            HumanPos,
+
+        )
+
         self.encoder_subscriber = self.create_subscription(
             Encoder,
             ENCODER_FRAMEID,
             self.encoder_callback,
             10
         )
+
+        self.lidar_subscriber = self.create_subscription(
+            LaserScan,
+            LIDAR_FRAMEID,
+            self.lidar_callback,
+            10
+        )
+
+
+    def lidar_callback(self, msg):
+        #TODO
 
     def encoder_callback(self, msg):
         current_time = self.get_clock().now()
