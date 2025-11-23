@@ -51,7 +51,7 @@ class MainFrame(QMainWindow):
             pixmap = QPixmap(200,200)
             pixmap.fill(QColor("gray"))
         
-        self.photo_label.setPixmap(pixmap.scaled(200, 200, Qt.AspectRatioMode.KeepAspectRatio))
+        self.photo_label.setPixmap(pixmap.scaled(300, 300, Qt.AspectRatioMode.KeepAspectRatio))
 
         # ❗ 수치로 위치와 크기 지정 (창의 중앙 근처)
         self.photo_label.move(400, 20)    # X=150, Y=80
@@ -66,12 +66,12 @@ class MainFrame(QMainWindow):
 
 
         # --- 3. 로그아웃 버튼 ---
-        self.logout_button = QPushButton("로그아웃", central_widget) # 부모 지정
-        self.logout_button.clicked.connect(self.logout)
+        # self.logout_button = QPushButton("로그아웃", central_widget) # 부모 지정
+        # self.logout_button.clicked.connect(self.logout)
         
-        # ❗ 수치로 위치와 크기 지정
-        self.logout_button.move(420, 510)   # X=150, Y=220
-        self.logout_button.resize(460, 50)  # 너비 100, 높이 30
+        # # ❗ 수치로 위치와 크기 지정
+        # self.logout_button.move(420, 510)   # X=150, Y=220
+        # self.logout_button.resize(460, 50)  # 너비 100, 높이 30
 
     def stt_move(self):
         self.manager.show_page("Sttclass")

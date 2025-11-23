@@ -29,16 +29,17 @@ class StateMachine:
         # If the event exists → use it
         if event in transitions:
             next_id = transitions[event]
+
+            if next_id not in self.states:
+                raise Exception(f"[ERROR] Undefined next state ID {next_id}")
+
+            self.current_state = self.states[next_id]
+            print(f"[INFO] State machine get '{event}'! Next State is {self.current_state.name}")
             
         else:
-            raise Exception(
-                f"[ERROR] No transition for event '{event}' in state {self.current_state.name}"
-            )
+            pass
+            # print(f"[ERROR] No transition for event '{event}' in state {self.current_state.name}")
 
-        if next_id not in self.states:
-            raise Exception(f"[ERROR] Undefined next state ID {next_id}")
-
-        self.current_state = self.states[next_id]
         return self.current_state
 
 

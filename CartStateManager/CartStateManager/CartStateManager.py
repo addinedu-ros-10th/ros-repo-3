@@ -36,7 +36,6 @@ class CartStateManager(Node):
         self.destin_posx = 0.0
         self.destin_posy = 0.0
         self.destin_theta = 0.0
-        self.user_id = 0
 
         self.perception_manager_queue = queue.Queue(maxsize=1)
         self.interface_manager_queue = queue.Queue(maxsize=1)
@@ -118,7 +117,7 @@ class CartStateManager(Node):
 
     def state_event_callback(self, msg : String):
         state_event = msg.data
-        self.state_machine.recv_event("DEFAULT")
+        self.state_machine.recv_event(state_event)
 
     def position_order_callback(self, msg : PoseOrder):
         
@@ -134,8 +133,12 @@ class CartStateManager(Node):
         self.posx, self.posy = msg.pose.pose.position.x, msg.pose.pose.position.y
 
     def battery_status_callback(self, msg : Float32):
-        self.state_machine.recv_event(msg.data)
         self.battery_percentage = msg.data
+        if (self.state_machine.get_state().state_id < 3):
+            if (self.battery_percentage > 40.0):
+                self.state_machine.recv_event("NEXT")
+        
+        
 
     def robot_status_sending(self):
         msg = RobotState()

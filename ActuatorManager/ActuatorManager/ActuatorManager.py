@@ -36,6 +36,7 @@ class ActuatorManager(Node):
         self.led = LED()
         self.driver = DynamixelDriver(SERIAL_PORT_NAME, BAUDRATE, DYNAMIXEL_IDS)
 
+        self.distance = 0
         # PID parameters
         self.angle_kp = 1.0
         self.angle_ki = 0.0
@@ -164,7 +165,6 @@ class ActuatorManager(Node):
 
 
         # --- 8. 진행 상황 체크용 타이머 (1초마다) ---
-        self.stuck_timer = self.create_timer(1.0, self.check_stuck)
         self.state_action_timer = self.create_timer(0.02, self.state_action_callback)
         self.speed_limit_timer = self.create_timer(0.02, self.speed_limit_callback)
 
@@ -220,6 +220,8 @@ class ActuatorManager(Node):
             pass
 
     def speed_limit_callback(self):
+        if (self.current_state != OFFLINE_DRIVE):
+            return
         msg = SpeedLimit()
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.header.frame_id = 'map' 
@@ -231,7 +233,6 @@ class ActuatorManager(Node):
         msg.speed_limit = percentage # Maximum allowed speed in m/s
 
         self.speed_limit_publisehr.publish(msg)
-        self.get_logger().info(f'Publishing Speed Limit: {msg.speed_limit} m/s')
 
     def human_position_callback(self, msg):
         self.cam_id = msg.camid
@@ -344,9 +345,9 @@ class ActuatorManager(Node):
         self.send_state_event("END")
 
     def standby_order(self):
-        self.get_logger().info("pause 명령 수신: Nav2 주행 취소 시도")
-        if not self.cancel_navigation():
-            self.get_logger().warn("취소할 Nav2 주행이 없습니다.")
+        # self.get_logger().info("pause 명령 수신: Nav2 주행 취소 시도")
+        self.cancel_navigation()
+            # self.get_logger().warn("취소할 Nav2 주행이 없습니다.")
 
     def cancel_navigation(self):
         if self.current_goal_handle is None:
@@ -542,10 +543,10 @@ class ActuatorManager(Node):
         encoder_msg = Encoder()
         
         encoder_msg.header.stamp = current_time.to_msg()
-        encoder_msg.rpm_l = rpm_l
-        encoder_msg.rpm_r = rpm_r
-        encoder_msg.pos_raw_l = encoder_l
-        encoder_msg.pos_raw_r = encoder_r
+        encoder_msg.rpm_l = float(rpm_l)
+        encoder_msg.rpm_r = float(rpm_r)
+        encoder_msg.pos_raw_l = float(encoder_l)
+        encoder_msg.pos_raw_r = float(encoder_r)
 
         self.encoder_pub.publish(encoder_msg)
 
