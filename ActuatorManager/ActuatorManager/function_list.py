@@ -22,9 +22,6 @@ def calculate_cam_angle(posx, posy, distance, cam_id):
     angle = math.asin(relative_x/distance)
     return angle
 
-
-
-
 def find_nearest_waypoint(posx, posy):
 
     designated_x = posx

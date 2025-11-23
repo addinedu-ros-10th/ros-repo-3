@@ -30,7 +30,7 @@ class SensorManager(Node):
         self.battery = Battery()
         self.Imu = IMU()
 
-        self.last_time = 0
+        self.last_time = self.get_clock().now()
         self.last_encoder_l = 0
         self.last_encoder_r = 0
         self.theta = 0
