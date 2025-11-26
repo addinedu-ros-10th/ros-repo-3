@@ -75,7 +75,7 @@ def find_shortest_path(start, end, blocked_nodes=None):
 
     return None
 
-def create_pose_stamped(x, y, theta_rad=None):
+def create_pose_stamped(x, y, theta_rad, current_time):
     """
     PoseStamped 생성
     - theta_rad가 주어지면: 해당 각도로 쿼터니언 생성
@@ -84,7 +84,7 @@ def create_pose_stamped(x, y, theta_rad=None):
     """
     pose = PoseStamped()
     pose.header.frame_id = 'map'
-    pose.header.stamp = self.get_clock().now().to_msg()
+    pose.header.stamp = current_time.to_msg()
     pose.pose.position.x = x
     pose.pose.position.y = y
 

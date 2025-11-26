@@ -2,6 +2,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
 from nav2_msgs.msg import SpeedLimit
+from nav_msgs.msg import Odometry
 
 
 import math
@@ -16,7 +17,6 @@ from std_msgs.msg import Float32, String
 from pinky_msgs.msg import Encoder, RobotState, PoseOrder, HumanPos
 
 from action_msgs.msg import GoalStatus
-from nav2_msgs.action import NavigateToPose, NavigateThroughPoses
 from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped, Twist
 from collections import deque
 
@@ -29,14 +29,21 @@ from .config import *
 ANGLE_TOLERANCE = 0.01
 DISTANCE_TOLERANCE = 0.01
 
+TWIST_SUB_TOPIC_NAME = "cmd_vel"
+ODOM_PUB_TOPIC_NAME = "odom"
+JOINT_PUB_TOPIC_NAME = "joint_states"
+ODOM_FRAME_ID = "odom"
+ODOM_CHILD_FRAME_ID = "base_footprint"
+
 class ActuatorManager(Node):
     def __init__(self):
         super().__init__('ActuatorManager')
 
         self.led = LED()
         self.led.clear()
-        
+        self.led_color = [0, 0, 0]
         self.driver = DynamixelDriver(SERIAL_PORT_NAME, BAUDRATE, DYNAMIXEL_IDS)
+        self.cam_id = 1
 
         self.distance = 0
         # PID parameters
@@ -177,28 +184,11 @@ class ActuatorManager(Node):
 
 
 
-
-        self.joint_pub = self.create_publisher(
-            JointState,
-            JOINT_PUB_TOPIC_NAME,
-            10
-        )
-        
-        self.encoder_pub = self.create_publisher(
-            Encoder,
-            "encoder",
-            10
-        )
-        
-        self.twist_sub = self.create_subscription(
-            Twist,
-            TWIST_SUB_TOPIC_NAME,
-            self.twist_callback,
-            10
-        )
-        
+        self.odom_pub = self.create_publisher(Odometry, ODOM_PUB_TOPIC_NAME, 10)
+        self.joint_pub = self.create_publisher(JointState, JOINT_PUB_TOPIC_NAME, 10)
+        self.twist_sub = self.create_subscription(Twist, TWIST_SUB_TOPIC_NAME, self.twist_callback, 10)
         self.tf_broadcaster = TransformBroadcaster(self)
-        self.timer = self.create_timer(1.0 / 50.0, self.update_and_publish)
+        self.timer = self.create_timer(1.0 / 30.0, self.update_and_publish)
 
         self.x = 0.0
         self.y = 0.0
@@ -209,7 +199,8 @@ class ActuatorManager(Node):
 
     def state_action_callback(self):
         if (self.current_state in [ONLINE_DRIVE, OFFLINE_DRIVE, RETRUN_CHRG]):
-            self.drive_order()
+            # self.drive_order()
+            self.drive_action()
         elif (self.current_state == ONLINE_PICKUP):
             self.picking_order()
         elif (self.current_state == OFFLINE_FOLLOW):
@@ -244,6 +235,13 @@ class ActuatorManager(Node):
 
         self.relative_angle = calculate_cam_angle(human_x, human_y, self.distance, self.cam_id)
 
+    def drive_action(self):
+        if (self.led_color != [0,0, 255]):
+            self.led_color = [0,0,255]  
+            self.led.fill(self.led_color)
+        else:
+            pass
+
     def drive_order(self):
         if (len(self.current_path_ids) > 0):
             return
@@ -266,25 +264,30 @@ class ActuatorManager(Node):
             self.send_state_event("STBY")
 
     def picking_order(self):
-        self.led.fill((255, 0, 0))
-        i = 100
-        while (i > 0):
-            self.pid_control(0, i)
-            i -= 1
-        self.led.clear()
+        if (self.led_color != [255, 0, 0]):
+            self.led_color = [255, 0, 0]  
+            self.led.fill(self.led_color)
+        else:
+            pass
         
-        result = True
-        while result:
-            result = self.pid_control(self.theta - math.pi, 0)
-            if (result == False):
-                self.send_state_event("STBY")
-                break
+        # i = 100
+        # while (i > 0):
+        #     self.pid_control(0, i)
+        #     i -= 1
+        # self.led.clear()
+        
+        # result = True
+        # while result:
+        #     result = self.pid_control(self.theta - math.pi, 0)
+        #     if (result == False):
+        #         self.send_state_event("STBY")
+        #         time.sleep(0.02)
+        #         break
         
     def follow_order(self):
-        self.led.fill((0, 255, 0))
+        self.led.fill((0, 166, 166))
         self.pid_control(self.relative_angle, self.distance)
 
-        
     def pid_control(self, relative_angle, distance):
         """
         Callback function for PID control based on:
@@ -340,11 +343,10 @@ class ActuatorManager(Node):
                 f"PID -> v: {cmd.linear.x:.2f}, w: {cmd.angular.z:.2f}, angle_err: {angle_error:.2f}, dist_err: {dist_error:.2f}"
             )
             return True
-        
 
     def packing_order(self):
         self.led.rainbow(iterations=3)
-        self.send_state_event("END")
+        # self.send_state_event("END")
 
     def standby_order(self):
         # self.get_logger().info("pause 명령 수신: Nav2 주행 취소 시도")
@@ -370,10 +372,10 @@ class ActuatorManager(Node):
 
     def amcl_pose_callback(self, msg: PoseWithCovarianceStamped):
         self.posx, self.posy = msg.pose.pose.position.x, msg.pose.pose.position.y
-        _, _, self.theta = euler_from_quaternion(msg.pose.pose.orientation.x, 
+        _, _, self.theta = euler_from_quaternion([msg.pose.pose.orientation.x, 
                                                  msg.pose.pose.orientation.y, 
                                                  msg.pose.pose.orientation.z, 
-                                                 msg.pose.pose.orientation.w)
+                                                 msg.pose.pose.orientation.w])
 
     def robot_state_callback(self, msg):
         self.robot_id = msg.cid
@@ -424,7 +426,7 @@ class ActuatorManager(Node):
                     theta = 0.0
 
 
-            goal_msg.poses.append(create_pose_stamped(x, y, theta_rad=theta))
+            goal_msg.poses.append(create_pose_stamped(x, y, theta, self.get_clock().now()))
 
         if not goal_msg.poses:
             self.get_logger().error("경유지 목록이 비어있습니다.")
@@ -436,7 +438,6 @@ class ActuatorManager(Node):
             f"Nav2에 {len(goal_msg.poses)}개 경유지 전송 ({tag}: {' -> '.join(path_ids)})"
         )
 
-        self.reset_progress_monitor()
         send_goal_future = self._action_path_client.send_goal_async(goal_msg)
         send_goal_future.add_done_callback(self.goal_handle_callback)
 
@@ -480,7 +481,7 @@ class ActuatorManager(Node):
                 else:
                     self.send_state_event("PACKING")
             else:
-                self.send_state_event("STBY")
+                self.send_state_event("PICKUP")
         elif status == GoalStatus.STATUS_CANCELED:
             self.get_logger().info("목표가 취소되었습니다 (STATUS_CANCELED)")
             self.send_state_event("STBY")
@@ -495,17 +496,6 @@ class ActuatorManager(Node):
         pub_msg = String()
         pub_msg.data = data
         self.state_event_publisher.publish(pub_msg)
-
-
-
-
-
-
-
-
-
-
-
 
     def twist_callback(self, msg: Twist):
         linear_x = msg.linear.x
@@ -547,21 +537,46 @@ class ActuatorManager(Node):
         self.last_encoder_l = encoder_l
         self.last_encoder_r = encoder_r
 
-        self._publish_encoder(current_time, rpm_l, rpm_r, encoder_l, encoder_r)
+        dist_l = (delta_l / PULSE_PER_ROT) * CIRCUMFERENCE
+        dist_r = (delta_r / PULSE_PER_ROT) * CIRCUMFERENCE
+
+        delta_distance = (dist_r + dist_l) / 2.0
+        delta_theta = (dist_r - dist_l) / WHEEL_BASE
+        
+        self.theta += delta_theta
+        self.x += delta_distance * math.cos(self.theta)
+        self.y += delta_distance * math.sin(self.theta)
+        
+        v_x = delta_distance / dt if dt > 0 else 0.0
+        vth = delta_theta / dt if dt > 0 else 0.0
+
+        self._publish_tf(current_time)
+        self._publish_odometry(current_time, v_x, vth)
         self._publish_joint_states(current_time, rpm_l, rpm_r)
 
         self.last_time = current_time
-        
-    def _publish_encoder(self, current_time, rpm_l, rpm_r, encoder_l, encoder_r):
-        encoder_msg = Encoder()
-        
-        encoder_msg.header.stamp = current_time.to_msg()
-        encoder_msg.rpm_l = float(rpm_l)
-        encoder_msg.rpm_r = float(rpm_r)
-        encoder_msg.pos_raw_l = float(encoder_l)
-        encoder_msg.pos_raw_r = float(encoder_r)
 
-        self.encoder_pub.publish(encoder_msg)
+    def _publish_tf(self, current_time):
+        t = TransformStamped()
+        t.header.stamp = current_time.to_msg()
+        t.header.frame_id = ODOM_FRAME_ID
+        t.child_frame_id = ODOM_CHILD_FRAME_ID
+        t.transform.translation.x = self.x
+        t.transform.translation.y = self.y
+        q = quaternion_from_euler(0, 0, self.theta)
+        t.transform.rotation.x, t.transform.rotation.y, t.transform.rotation.z, t.transform.rotation.w = q
+        self.tf_broadcaster.sendTransform(t)
+
+    def _publish_odometry(self, current_time, v_x, vth):
+        odom_msg = Odometry()
+        odom_msg.header.stamp = current_time.to_msg()
+        odom_msg.header.frame_id = ODOM_FRAME_ID
+        odom_msg.child_frame_id = ODOM_CHILD_FRAME_ID
+        odom_msg.pose.pose.position.x, odom_msg.pose.pose.position.y = self.x, self.y
+        q = quaternion_from_euler(0, 0, self.theta)
+        odom_msg.pose.pose.orientation.x, odom_msg.pose.pose.orientation.y, odom_msg.pose.pose.orientation.z, odom_msg.pose.pose.orientation.w = q
+        odom_msg.twist.twist.linear.x, odom_msg.twist.twist.angular.z = v_x, vth
+        self.odom_pub.publish(odom_msg)
 
     def _publish_joint_states(self, current_time, rpm_l, rpm_r):
         joint_msg = JointState()

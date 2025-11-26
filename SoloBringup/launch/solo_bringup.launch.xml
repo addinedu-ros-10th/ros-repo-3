@@ -16,11 +16,6 @@
         <arg name="angle_compensate" value="true"/>
         <arg name="scan_mode" value="DenseBoost"/>
     </include>
-
-    <node pkg="robot_localization" exec="ekf_node">
-        <param from="$(var ekf2_param_file)"/>
-        <remap from="/odometry/filtered" to="/odom"/>
-    </node>
     
     <node pkg="ActuatorManager" exec="ActuatorManager">
     </node>

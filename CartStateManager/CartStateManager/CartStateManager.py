@@ -7,7 +7,6 @@ from rcl_interfaces.msg import SetParametersResult
 from std_msgs.msg import Float64
 from pinky_msgs.msg import RobotState, PoseOrder, HumanPos, ItemReq
 from pinky_msgs.srv import Usercheck
-from tf2_ros import TransformBroadcaster
 
 
 from .tcp_socket import TCPSocket
@@ -30,7 +29,7 @@ class CartStateManager(Node):
         self.state_machine = StateMachine(STATE_TABLE, 0)
         self.user_id = -1
         self.state_code_timer = 0.1
-        self.robot_status_timer = 5
+        self.robot_status_timer = 0.1
 
         self.battery_percentage = 0.0
         self.posx = 0.0
@@ -80,13 +79,6 @@ class CartStateManager(Node):
             10
         )
 
-        self.filtered_odom_subscriber = self.create_subscription(
-            Odometry,
-            "odom",
-            self.filtered_odom_callback,
-            10
-        )
-
         self.position_order_subscriber = self.create_subscription(
             PoseOrder,
             'pose_order',
@@ -106,7 +98,6 @@ class CartStateManager(Node):
             self.amcl_pose_callback,
             rclpy.qos.qos_profile_sensor_data
         )
-        self.tf_broadcaster = TransformBroadcaster(self)
 
         for t in self.thread_list:
             t.start()
@@ -130,6 +121,7 @@ class CartStateManager(Node):
 
     def state_event_callback(self, msg : String):
         state_event = msg.data
+        self.get_logger().info(f"STATE EVENT RECEIVED : {state_event}")
         self.state_machine.recv_event(state_event)
 
     def position_order_callback(self, msg : PoseOrder):
@@ -149,24 +141,13 @@ class CartStateManager(Node):
                     self.state_machine.recv_event("DRIVE")
             print(self.destin_posx, self.destin_posy, self.destin_theta)
 
-    def filtered_odom_callback(self, msg : Odometry):
-        current_time = self.get_clock().now()
-        posx, posy = msg.pose.pose.position.x, msg.pose.pose.position.y
-        quat = msg.pose.pose.orientation
-        t = TransformStamped()
-        t.header.stamp = current_time.to_msg()
-        t.header.frame_id = "odom"
-        t.child_frame_id = "base_footprint"
-        t.transform.translation.x = self.posx
-        t.transform.translation.y = self.posy
-        t.transform.rotation = quat
-        self.tf_broadcaster.sendTransform(t)
-
     def battery_status_callback(self, msg : Float32):
         self.battery_percentage = msg.data
         if (self.state_machine.get_state().state_id < 3):
-            if (self.battery_percentage > 40.0):
+            if (self.battery_percentage > 25.0):
                 self.state_machine.recv_event("NEXT")
+            else:
+                self.get_logger().info(f"LOW BATTERY: {self.battery_percentage}")
         
     def robot_status_sending(self):
         msg = RobotState()
@@ -178,7 +159,8 @@ class CartStateManager(Node):
         msg.bat = self.battery_percentage
         msg.posx = self.posx
         msg.posy = self.posy
-
+        
+        self.get_logger().info(f"ROBOT STATE: {msg.stid}")
         self.robot_status_publisher.publish(msg)
 
     def interface_manager_sending(self):
