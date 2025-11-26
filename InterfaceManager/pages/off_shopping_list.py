@@ -1,5 +1,3 @@
-
-
 import os
 import sys
 from PyQt6.QtGui import QPixmap, QColor

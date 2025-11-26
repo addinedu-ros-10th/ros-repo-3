@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Dialog</class>
+ <widget class="QDialog" name="Dialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>300</width>
+    <height>300</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Dialog</string>
+  </property>
+  <widget class="QPushButton" name="pushButton_update">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>120</y>
+     <width>86</width>
+     <height>27</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>수정</string>
+   </property>
+  </widget>
+  <widget class="QComboBox" name="comboBox_itemlist">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>70</y>
+     <width>86</width>
+     <height>27</height>
+    </rect>
+   </property>
+   <item>
+    <property name="text">
+     <string>소주</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>맥주</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>케첩</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>마요네즈</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>과자_주황색</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>과자_노란색</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>초밥</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>피자</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>후라이팬</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>냄비</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>딸기</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>수박</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>포도</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>장식_나무</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>장식_산타</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>장식_고리</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string/>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string/>
+    </property>
+   </item>
+  </widget>
+  <widget class="QLineEdit" name="lineEdit_QTY">
+   <property name="geometry">
+    <rect>
+     <x>110</x>
+     <y>70</y>
+     <width>91</width>
+     <height>27</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_itemlist">
+   <property name="geometry">
+    <rect>
+     <x>30</x>
+     <y>40</y>
+     <width>41</width>
+     <height>19</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>물품명</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_QTY">
+   <property name="geometry">
+    <rect>
+     <x>140</x>
+     <y>40</y>
+     <width>66</width>
+     <height>19</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>수량</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButton_back">
+   <property name="geometry">
+    <rect>
+     <x>110</x>
+     <y>120</y>
+     <width>91</width>
+     <height>27</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>돌아가기</string>
+   </property>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

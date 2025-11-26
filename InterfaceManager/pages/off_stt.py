@@ -74,16 +74,16 @@ class Sttclass(QMainWindow):
          # ✅ QTableWidget 생성
         self.product_info = QTableWidget()
         self.product_info.setRowCount(0)  # 초기 행 개수
-        self.product_info.setColumnCount(3)  # 3개의 컬럼 생성
+        self.product_info.setColumnCount(2)  # 3개의 컬럼 생성
         
         # 헤더 이름 설정
-        self.product_info.setHorizontalHeaderLabels(["id", "QTY", "RECV"])  
+        self.product_info.setHorizontalHeaderLabels(["id", "QTY"])  
 
         # ✅ 테이블 크기 조정
         self.product_info.resizeColumnsToContents()
         self.product_info.setColumnWidth(0, 150)
         self.product_info.setColumnWidth(1, 200)
-        self.product_info.setColumnWidth(2, 150)
+        #self.product_info.setColumnWidth(2, 150)
 
         # ✅ 스타일 지정 (이미지와 유사하게)
         self.product_info.setStyleSheet("""
@@ -213,10 +213,17 @@ class Sttclass(QMainWindow):
 
         # 3) 받은 데이터의 절반을 ID/QTY 개수로 계산
         #    (total_count가 20이면, num_items는 10이 됨)
-        num_items = total_count // 2 
+        num_items = total_count 
 
-        ids = values[:num_items]   # 0번부터 9번까지 (10개)
-        qtys = values[num_items:]  # 10번부터 19번까지 (10개)
+        #ids = values[:num_items]   # 0번부터 9번까지 (10개)
+        qtys = values#[num_items:]  # 10번부터 19번까지 (10개)
+
+        fixed_names = [
+            "soju", "beer", "ketchap", "mayonaise",
+            "Snack_Org", "Snack_Ylw", "sushi", "pizza",
+            "frypan", "pot", "strawberry", "watermelon",
+            "grape", "deco_tree", "deco_santa", "deco_ring"
+        ]
 
         # 3) GUI 테이블 초기화 (16줄이 아닌, 받은 만큼만)
         self.product_info.setRowCount(num_items)
@@ -224,13 +231,13 @@ class Sttclass(QMainWindow):
         # 16번이 아닌, 받은 개수(num_items)만큼만 반복
         for i in range(num_items):
             # i가 0~9까지 돌기 때문에 IndexError가 발생하지 않음
-            id_item = QTableWidgetItem(str(ids[i]))
+            #id_item = QTableWidgetItem(str(ids[i]))
             qty_item = QTableWidgetItem(str(qtys[i]))
-            recv_item = QTableWidgetItem("OK")   # RECV 임의값 저장
+            #recv_item = QTableWidgetItem("OK")   # RECV 임의값 저장
 
-            self.product_info.setItem(i, 0, id_item)
+            #self.product_info.setItem(i, 0, id_item)
             self.product_info.setItem(i, 1, qty_item)
-            self.product_info.setItem(i, 2, recv_item)
+            #self.product_info.setItem(i, 2, recv_item)
 
         # ids = values[:16]
         # qtys = values[16:32]
@@ -317,6 +324,91 @@ class Sttclass(QMainWindow):
             QMessageBox.critical(self, "오류", msg)
 
         return text
+    
+    def request_product_data_from_server(self, user_id: int):
+        SERVER_IP = "192.168.0.180"
+        SERVER_PORT = 6000
+
+        TXID = 33      # CartStateManager
+        LEN = 8        # COM + DATA (각 4바이트)
+        FID = 2        # 카드 사용자 명령 송신
+        COM = 0x01     # 쇼핑 리스트 요청
+        DATA = user_id
+
+        packet = struct.pack("<i i i i i", TXID, LEN, FID, COM, DATA)
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        try:
+            print(f"[상품요청] 연결 중... {SERVER_IP}:{SERVER_PORT}")
+            sock.connect((SERVER_IP, SERVER_PORT))
+
+            sock.sendall(packet)
+            sock.sendall(b"DONE")
+
+            # DONE ... DONE 까지 수신
+            raw = self.recv_until_done(sock)
+            return raw
+
+        except Exception as e:
+            print("[상품요청] 오류:", e)
+            return None
+
+        finally:
+            sock.close()
+
+    def recv_until_done(self, sock):
+        data = b""
+        while True:
+            chunk = sock.recv(1024)
+            if not chunk:
+                break
+            data += chunk
+            if data.endswith(b"DONE"):
+                break
+        return data
+
+    def showEvent(self, event):
+        print("Sttclass 창이 보입니다.")
+
+        # -----------------------------
+        # 테스트용 강제 user_id 삽입
+        # 실제 서버 연동되면 삭제하면 됨
+        # -----------------------------
+        #if not hasattr(self.manager, "RECV_user_id") or self.manager.RECV_user_id is None:
+        #    print("[TEST] RECV_user_id 없음 → 테스트용 user_id = 1 사용")
+        #    self.manager.RECV_user_id = 1
+
+        #user_id = self.manager.RECV_user_id
+        #print(f"[INFO] user_id = {user_id} → 상품 요청 시작")
+
+        #raw_data = self.request_product_data_from_server(user_id)
+
+        #if raw_data:
+        #    print("[INFO] 상품 데이터 수신 OK → 테이블 로딩")
+        #    self.load_product_table(raw_data)
+        #else:
+        #    print("[ERROR] 상품 데이터 수신 실패")
+
+        #super().showEvent(event)
+        # -----------------------------
+
+        # LoginTcpWindow에서 저장해둔 user_id 불러오기
+        user_id = getattr(self.manager, "RECV_user_id", None)
+
+        if user_id is not None:
+            print("[INFO] cart_state_manager에 상품 정보 요청")
+            raw_data = self.request_product_data_from_server(user_id)
+
+            if raw_data:
+                self.load_product_table(raw_data)
+            else:
+                print("상품 데이터 수신 실패")
+        else:
+            print("user_id 없음 → 상품 정보 요청 불가")
+
+        super().showEvent(event)
+
 
 
 if __name__ == "__main__":

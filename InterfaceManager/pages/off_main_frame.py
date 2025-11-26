@@ -1,5 +1,3 @@
-
-
 import sys
 from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel, QPushButton, QApplication
 from PyQt6.QtGui import QPixmap, QColor
@@ -9,13 +7,30 @@ class MainFrame(QMainWindow):
     def __init__(self, manager, username=None, photo_path=None, login_window=None):
         super().__init__()
         self.manager = manager
-        
         self.login_window = login_window
+
+        # 🔥 1) 로그인에서 넘겨준 user_id 읽기
+        user_id = getattr(self.manager, "RECV_user_id", None)
+
+        # 🔥 2) user_id → username 매핑
+        name_map = {
+            1: "김철수",
+            2: "박영희"
+        }
+
+        photo_map = {
+            1: "./pages/user1.png",
+            2: "./pages/user2.png"
+        }
+
+        # 기본 username, photo_path 처리
+        username = name_map.get(user_id, "Guest")
+        photo_path = photo_map.get(user_id, None)
+
         self.setWindowTitle("회원 정보 시스템 - 메인")
-        # 창 크기를 400x300으로 고정
         self.setGeometry(100, 100, 1280, 720)
-        # self.setFixedSize(400, 300) # 창 크기 고정 (권장)
-        
+
+        # 🔥 3) 이제 username, photo_path 를 이용해 UI 세팅
         self.initUI(username, photo_path)
 
     def initUI(self, username, photo_path):
@@ -58,8 +73,9 @@ class MainFrame(QMainWindow):
         self.photo_label.resize(500, 500) # 너비 100, 높이 100
 
         self.stt_button = QPushButton("구매희망 리스트 담기", central_widget) # 부모 지정
-        self.stt_button.clicked.connect(self.stt_move)
-
+        #self.stt_button.clicked.connect(self.stt_move)
+        self.stt_button.clicked.connect(
+            lambda: self.manager.show_page("ItemRadio"))
         # ❗ 수치로 위치와 크기 지정
         self.stt_button.move(420, 450)   # X=150, Y=220
         self.stt_button.resize(460, 50)  # 너비 100, 높이 30
@@ -80,7 +96,7 @@ class MainFrame(QMainWindow):
         if self.login_window:
             self.login_window.show()
 
-        self.manager.show_page("LoginTcpWindow")
+        self.manager.show_page("LoginWindow")
         # self.close()
 
     def closeEvent(self, event):
